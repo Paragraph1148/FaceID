@@ -11,12 +11,15 @@ import cv2
 import numpy as np
 
 from faceid.camera import CameraUnavailable
+from faceid.enrolment import EnrolmentRules
 from faceid.feed import CameraFeed
+from faceid.vision import FaceEngine
 
 GREEN, AMBER, YELLOW, WHITE = (0, 200, 0), (0, 165, 255), (0, 255, 255), (255, 255, 255)
+MAX_FPS = 15  # the browser needs no more, and it leaves CPU for recognition
 
 
-def mjpeg_preview(feed: CameraFeed, engine, min_face_width: int, min_sharpness: float) -> Iterator[bytes]:
+def mjpeg_preview(feed: CameraFeed, engine: FaceEngine, rules: EnrolmentRules) -> Iterator[bytes]:
     """Multipart MJPEG parts until the browser disconnects or the camera fails."""
     fps, last = 0.0, time.perf_counter()
     while True:
@@ -28,12 +31,15 @@ def mjpeg_preview(feed: CameraFeed, engine, min_face_width: int, min_sharpness: 
         faces = engine.detect(frame)
         for face in faces:
             top, right, bottom, left = face.box
-            width, sharpness = right - left, engine.sharpness(frame, face)
-            colour = GREEN if width >= min_face_width and sharpness >= min_sharpness else AMBER
+            sharpness = engine.sharpness(frame, face)
+            colour = GREEN if face.width >= rules.min_face_width and sharpness >= rules.min_sharpness else AMBER
             cv2.rectangle(frame, (left, top), (right, bottom), colour, 2)
-            cv2.putText(frame, f"{width}px  sharp {sharpness:.0f}", (left, top - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.6, colour, 2)
+            cv2.putText(frame, f"{face.width}px  sharp {sharpness:.0f}", (left, top - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.6, colour, 2)
             for x, y in face.left_eye + face.right_eye:
                 cv2.circle(frame, (x, y), 1, YELLOW, -1)
+        elapsed = time.perf_counter() - last
+        if elapsed < 1 / MAX_FPS:
+            time.sleep(1 / MAX_FPS - elapsed)
         now = time.perf_counter()
         fps = 0.9 * fps + 0.1 / max(now - last, 1e-6)  # smoothed so the number is readable
         last = now

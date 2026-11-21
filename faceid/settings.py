@@ -11,8 +11,8 @@ DEFAULTS = {
     "DETECTION_UPSAMPLE": 0,
     # Face Enrolment (F3.2) and matching (F4.2)
     "MIN_FACE_WIDTH": 80,            # px
-    "MIN_SHARPNESS": 30.0,           # variance of the Laplacian; see the diagnostics page to calibrate
-    "TOLERANCE": 0.6,                # largest Face Distance that counts as the same person
+    "MIN_SHARPNESS": 30.0,           # variance of the Laplacian; provisional until calibrated on the demo laptop
+    "TOLERANCE": 0.6,                # largest Face Distance at which two Face Encodings are the same Student
 }
 
 

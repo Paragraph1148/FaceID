@@ -15,10 +15,14 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Captures are refused, with the reason shown, when there is no face, more than one face, the face is too small or blurred, or it matches another enrolled Student.
 - Re-enrolling replaces a Student's encodings in one transaction. The Student list shows who is enrolled.
 - The live preview, on both the enrolment and diagnostics pages, labels each face with its width and sharpness.
+- Each browser login keeps its own enrolment draft, forgotten after 30 minutes untouched. Saving re-checks the faces against Students enrolled in the meantime.
+- Deactivated Students can't be enrolled, and their faces don't block other Students.
 
 ### Changed
 
-- The webcam is shared between pages through one camera feed. It is released after 15 seconds unused and when the server stops, which fixes a crash on Ctrl+C.
+- The webcam is shared between pages through one camera feed. It is released after 15 seconds unused and when the server stops, which fixes a crash on Ctrl+C. Captures only ever use a frame less than a second old, and the last frame is dropped when the camera is released.
+- Calls into dlib take turns, because pages are served on several threads.
+- `flask create-admin` reports a taken username clearly, without a traceback.
 
 ## [0.1.0] - 2026-11-21
 

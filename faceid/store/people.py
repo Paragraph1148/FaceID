@@ -179,10 +179,18 @@ def set_active(role: str, account_id: int, active: bool) -> None:
 
 
 def _to_blob(encoding: np.ndarray) -> bytes:
-    return np.asarray(encoding, dtype="<f8").tobytes()
+    blob = np.asarray(encoding, dtype="<f8").tobytes()
+    if len(blob) != 128 * 8:
+        raise ValueError("a Face Encoding must have 128 numbers")
+    return blob
+
+
+ENCODING_BYTES = 128 * 8
 
 
 def _from_blob(blob: bytes) -> np.ndarray:
+    if len(blob) != ENCODING_BYTES:
+        raise ValueError(f"a Face Encoding must be {ENCODING_BYTES} bytes, got {len(blob)}")
     return np.frombuffer(blob, dtype="<f8").astype(np.float64)
 
 
@@ -197,10 +205,13 @@ def replace_encodings(student_id: int, encodings: list[np.ndarray]) -> None:
 
 
 def encodings_of_other_students(student_id: int) -> dict[str, list[np.ndarray]]:
-    """Every other Student's Face Encodings, keyed by "Name (Enrolment Number)" for messages."""
+    """Every other *active* Student's Face Encodings, keyed by "Name (Enrolment Number)" for messages.
+
+    Deactivated Students can't attend, so their faces don't block anyone (SPEC F3.2).
+    """
     rows = db.query(
         "SELECT s.name, s.enrollment_no, e.encoding_vector FROM face_encoding e"
-        " JOIN student s ON s.student_id = e.student_id WHERE e.student_id <> %s",
+        " JOIN student s ON s.student_id = e.student_id WHERE e.student_id <> %s AND s.is_active",
         (student_id,),
     )
     gallery: dict[str, list[np.ndarray]] = {}

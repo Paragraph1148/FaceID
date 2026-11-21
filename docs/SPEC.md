@@ -98,10 +98,14 @@ Other rules:
 - **F3.2**: A Capture is rejected, with a reason shown, if any of these is true:
   - It contains zero faces or more than one face.
   - The face is narrower than 80 px.
-  - The image is blurred: the variance of the Laplacian over the face, resized to 160 px wide, is below `MIN_SHARPNESS`. The default is 30, calibrated on the demo laptop using the sharpness value the live preview shows on each face.
-  - It matches a *different* Student within the Tolerance. This rejection names the other Student.
+  - The image is blurred: the variance of the Laplacian over the face, resized to 160 px wide, is below `MIN_SHARPNESS`. The default of 30 is provisional, until it's calibrated on the demo laptop using the sharpness value the live preview shows on each face (Windows checklist check 10).
+  - It matches a *different*, active Student within the Tolerance. This rejection names the other Student. Deactivated Students can't attend, so their faces never block anyone.
 - **F3.3**: Each accepted Capture becomes one Face Encoding. The image is discarded in memory and never written to disk or the database.
-- **F3.4**: Re-enrolling a Student replaces all of their Face Encodings in one transaction. Until saved, Captures are kept in memory only and can be retaken or discarded.
+- **F3.4**: Re-enrolling a Student replaces all of their Face Encodings in one transaction.
+  - Until saved, Captures are kept in memory only and can be retaken or discarded.
+  - Each browser login has its own draft, which is forgotten after 30 minutes untouched.
+  - Saving checks the Captures against other Students again, because someone may have been enrolled since.
+  - Deactivated Students can't be enrolled.
 - **F3.5**: The enrolment page shows the live camera. Each face's box shows its width and sharpness and turns green when both pass, so the Admin sees a problem before pressing Capture. The Student list shows who is enrolled.
 
 ### 5.4 Live recognition
@@ -211,3 +215,4 @@ Each milestone goes through a `feat/` branch, a PR, `code-review`, a merge to `m
 - **CPU only**: the prebuilt dlib can't use a GPU, so CNN detection is slow.
 - **Distance from the camera**: HOG needs a face about 80 px wide, or 40 px with upsampling at roughly 4× the cost. On a 720p laptop webcam that is about 1.7 m by default and about 3.5 m with upsampling. Students further back aren't detected. The synopsis's recommended 1080p webcam extends both distances by half. §7.2 measures the real limits.
 - **Re-enrolment**: changing the encoding model means everyone must be enrolled again (ADR 0002).
+- **Pose guidance only**: Face Enrolment asks for five head poses, but doesn't verify the head angle. That would need a head-pose model the synopsis doesn't include.

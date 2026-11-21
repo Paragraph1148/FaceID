@@ -3,10 +3,10 @@
 import platform
 
 import cv2
-from flask import Blueprint, Response, current_app, render_template
+from flask import Blueprint, current_app, render_template
 
 from faceid import vision
-from faceid.preview import mjpeg_preview
+from faceid.web.preview import preview_response
 from faceid.web.auth import role_required
 
 bp = Blueprint("diagnostics", __name__, url_prefix="/admin/diagnostics")
@@ -30,9 +30,4 @@ def page():
 @bp.route("/stream")
 @role_required("admin")
 def stream():
-    config = current_app.config
-    frames = mjpeg_preview(
-        current_app.extensions["camera_feed"], current_app.extensions["face_engine"],
-        config["MIN_FACE_WIDTH"], config["MIN_SHARPNESS"],
-    )
-    return Response(frames, mimetype="multipart/x-mixed-replace; boundary=frame")
+    return preview_response()

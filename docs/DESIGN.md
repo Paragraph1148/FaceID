@@ -59,10 +59,12 @@ It has no clock, no IO and no dlib. Tests feed it scripted `DetectedFace` lists 
 
 ```python
 assess_capture(frame, engine, others, rules) -> Accepted(encoding) | Rejected(reason)
-draft = EnrolmentDraft(student_id); draft.accept(pose, encoding); draft.missing(); draft.encodings()
+draft = drafts.get(owner, student_id)           # DraftStore: one draft per browser login and Student
+draft.capture(pose, frame, engine, others, rules) -> Accepted | Rejected
+draft.ready_to_save(others, rules) -> [5 encodings] | Rejected
 ```
 
-`assess_capture` holds every rejection rule in F3.2 and asks the engine for the cheap checks before the expensive encoding. `others` maps other Students' display names to their encodings. `EnrolmentDraft` holds the five poses in memory until they are saved.
+`assess_capture` holds every rejection rule in F3.2 and asks the engine for the cheap checks before the expensive encoding. `others` maps other active Students' display names to their encodings. `EnrolmentDraft` keeps the five poses in memory and re-checks them against other Students before they are saved.
 
 ### `faceid/matching.py`: comparing encodings (pure)
 
@@ -75,10 +77,9 @@ class FaceEngine(Protocol):
     def detect(self, frame_bgr) -> list[DetectedFace]          # box + eye landmarks (cheap)
     def sharpness(self, frame_bgr, face) -> float               # blur measure (cheap)
     def encode(self, frame_bgr, face: DetectedFace) -> encoding  # 128-d (expensive)
-    def sharpness(self, frame_rgb) -> float
 ```
 
-- **`DlibEngine`**, the real engine: it wraps `face_recognition` and handles downscaling, HOG or CNN detection, and landmark extraction. It is the only file that imports `face_recognition` or `dlib`.
+- **`DlibEngine`**, the real engine: it wraps `face_recognition` and handles downscaling, HOG or CNN detection, and landmark extraction. It is the only file that imports `face_recognition` or `dlib`. Calls into dlib take turns behind a lock, because Flask serves pages on several threads.
 - **`ScriptedEngine`** (`tests/fakes.py`), for tests: it returns pre-set faces.
 
 The app holds one engine in `app.extensions["face_engine"]`. Tests pass `FACE_ENGINE` in the config to replace it.
@@ -141,7 +142,7 @@ There is one `Table` shape and three renderers, so all formats contain the same 
 
 ### `faceid/preview.py`: live preview
 
-`mjpeg_preview(feed, engine, ...)` streams annotated frames (face boxes with width and sharpness) to the diagnostics and enrolment pages.
+`mjpeg_preview(feed, engine, rules)` streams annotated frames (face boxes with width and sharpness), at most 15 per second, to the diagnostics and enrolment pages.
 
 ### `faceid/web/`: Flask (thin)
 

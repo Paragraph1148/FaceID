@@ -18,8 +18,10 @@
         {% else %}<span class="badge text-bg-warning">Not enrolled</span>{% endif %}</td>
     <td>{{ status_badge(s.is_active) }}</td>
     <td class="text-end">
+      {% if s.is_active %}
       <a class="btn btn-sm btn-outline-primary" href="{{ url_for('enrolment.page', student_id=s.student_id) }}">
         {{ 'Re-enrol face' if s.encoding_count else 'Enrol face' }}</a>
+      {% endif %}
       <form method="post" class="d-inline" action="{{ url_for('admin.student_reset_password', student_id=s.student_id) }}">
         {{ csrf() }}<button class="btn btn-sm btn-outline-secondary">Reset password</button></form>
       {{ active_toggle('admin.student_active', 'student_id', s.student_id, s.is_active) }}

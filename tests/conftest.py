@@ -73,9 +73,9 @@ def login(client, identifier, password):
     return submit(client, "/login", {"identifier": identifier, "password": password})
 
 
-def create_admin(app, email="admin@college.test", password="admin-pass-1"):
+def create_admin(app, email="admin@college.test", password="admin-pass-1", username="admin"):
     result = app.test_cli_runner().invoke(
-        args=["create-admin"], input=f"admin\n{email}\n{password}\n{password}\n"
+        args=["create-admin"], input=f"{username}\n{email}\n{password}\n{password}\n"
     )
     assert result.exit_code == 0, result.output
     return email, password

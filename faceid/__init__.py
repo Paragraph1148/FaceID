@@ -15,6 +15,7 @@ from flask import Flask, render_template
 
 from faceid import cli, settings
 from faceid.camera import WebcamSource
+from faceid.enrolment import DraftStore
 from faceid.feed import CameraFeed
 from faceid.vision import DlibEngine
 from faceid.store import db
@@ -76,6 +77,7 @@ def _attach_camera_and_engine(app: Flask) -> None:
     app.extensions["face_engine"] = config.get("FACE_ENGINE") or DlibEngine(
         config["DETECTOR"], config["DETECTION_SCALE"], config["DETECTION_UPSAMPLE"]
     )
-    app.extensions["enrolment_drafts"] = {}  # student_id -> EnrolmentDraft, in memory only (ADR 0002)
-    # Release the webcam on exit; a camera thread still running at interpreter shutdown can crash it.
-    atexit.register(app.extensions["camera_feed"].stop)
+    app.extensions["enrolment_drafts"] = DraftStore()  # in memory only (ADR 0002)
+    if not app.testing:
+        # Release the webcam on exit; a camera thread still running at interpreter shutdown can crash it.
+        atexit.register(app.extensions["camera_feed"].stop)

@@ -1,7 +1,8 @@
 """Shares one webcam between pages (ADR 0004: one camera per server).
 
 A background thread keeps the latest frame. The camera opens on first use and is released
-after `idle_seconds` without anyone asking for a frame, so it isn't left on.
+after `idle_seconds` without anyone asking for a frame, so it isn't left on. When it is released,
+the last frame is dropped too: frames live in memory only while the camera is in use (ADR 0002).
 """
 
 import threading
@@ -10,23 +11,30 @@ from collections.abc import Callable
 
 import numpy as np
 
-from faceid.camera import CameraUnavailable
+from faceid.camera import CameraUnavailable, FrameSource
+
+FRESH_SECONDS = 1.0  # a frame older than this is never handed out, e.g. to a Capture
 
 
 class CameraFeed:
-    def __init__(self, open_source: Callable[[], object], idle_seconds: float = 15.0, first_frame_timeout: float = 10.0):
+    def __init__(
+        self, open_source: Callable[[], FrameSource], idle_seconds: float = 15.0, first_frame_timeout: float = 10.0
+    ):
         self._open_source = open_source
         self._idle_seconds = idle_seconds
         self._first_frame_timeout = first_frame_timeout
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
-        self._frame: np.ndarray | None = None
+        self._frame: tuple[float, np.ndarray] | None = None  # (time captured, frame)
         self._error: str | None = None
         self._last_request = 0.0
 
     def latest_frame(self) -> np.ndarray:
-        """The newest camera frame (a copy). Opens the camera if needed; raises CameraUnavailable on failure."""
+        """A copy of a frame captured within the last second. Opens the camera if needed.
+
+        Raises CameraUnavailable if the camera can't be opened or sends nothing.
+        """
         with self._lock:
             self._last_request = time.monotonic()
             if self._thread is None or not self._thread.is_alive():
@@ -36,11 +44,11 @@ class CameraFeed:
                 self._thread.start()
         deadline = time.monotonic() + self._first_frame_timeout
         while time.monotonic() < deadline:
-            frame, error = self._frame, self._error
+            latest, error = self._frame, self._error
             if error:
                 raise CameraUnavailable(error)
-            if frame is not None:
-                return frame.copy()
+            if latest is not None and time.monotonic() - latest[0] < FRESH_SECONDS:
+                return latest[1].copy()
             time.sleep(0.01)
         raise CameraUnavailable(f"The camera sent no picture within {self._first_frame_timeout:.0f} seconds.")
 
@@ -62,6 +70,7 @@ class CameraFeed:
                 if frame is None:
                     self._error = "The camera stopped sending frames."
                     return
-                self._frame = frame
+                self._frame = (time.monotonic(), frame)
         finally:
             source.close()
+            self._frame = None

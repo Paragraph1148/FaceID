@@ -1,6 +1,7 @@
 """`flask` commands for setup and operations (SPEC F1.2, F7)."""
 
 import click
+from mysql.connector import IntegrityError
 from flask import current_app
 from flask.cli import with_appcontext
 
@@ -34,7 +35,10 @@ def create_admin(username, email, password):
         raise click.ClickException(error)
     if people.email_owner(email.strip()):
         raise click.ClickException(f"{email} is already used by another account.")
-    people.create_admin(username.strip(), email.strip(), password)
+    try:
+        people.create_admin(username.strip(), email.strip(), password)
+    except IntegrityError:
+        raise click.ClickException(f"The username {username.strip()} is already taken.") from None
     click.echo(f"Admin {email} created.")
 
 
