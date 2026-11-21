@@ -1,33 +1,40 @@
-# --- Rust ---
-/target/
-**/target/
-**/*.rs.bk
-*.pdb
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
 
-# --- Face data (personal data: never commit) ---
-# Local databases holding students, embeddings and attendance
+# --- Flask instance folder: config.toml, secret key ---
+/instance/
+
+# --- Personal data: never commit ---
+# Synopsis and other private documents (names, enrolment numbers)
+/docs/private/
+*.docx
+# Databases, backups, attendance exports, evaluation recordings
 *.db
-*.db-journal
-*.db-wal
-*.db-shm
 *.sqlite
 *.sqlite3
-# Enrollment captures and app data written next to the binary during dev
-/data/
-/captures/
-# Attendance exports
+/backups/
 /exports/
-*.csv
+/recordings/
 *.xlsx
-!/tests/fixtures/**/*.csv
+*.csv
+*.pdf
+!/tests/fixtures/**
 
-# --- ML models (downloaded, not versioned) ---
-*.onnx
-*.ort
-/models/*
-!/models/README.md
+# --- Downloaded datasets (LFW) ---
+/datasets/
 
-# --- Secrets and local config ---
+# --- Secrets ---
 .env
 .env.*
 !.env.example
@@ -35,18 +42,14 @@
 # --- Editors ---
 .idea/
 .vscode/
-*.swp
-*.swo
-*~
 .zed/
+*.swp
+*~
 
 # --- OS ---
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# --- Throwaway prototypes (Phase 6) ---
-/prototypes/
 
 # --- Claude Code local settings ---
 .claude/settings.local.json

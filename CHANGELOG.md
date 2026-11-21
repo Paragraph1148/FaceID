@@ -10,3 +10,5 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Repository scaffolding: README, MIT licence, changelog, `.gitignore`.
+- Planning documents: specification, module design, glossary, ADRs 0001–0006, stack research.
+- Pinned `requirements.txt` for Python 3.10.
