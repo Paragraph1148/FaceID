@@ -1,0 +1,19 @@
+{% extends "admin/layout.html" %}
+{% from "macros.html" import field, csrf %}
+{% block title %}{{ 'Edit' if existing else 'Add' }} Student{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{{ 'Edit' if existing else 'Add' }} Student</h1>
+<form method="post" class="card card-body" style="max-width: 40rem">
+  {{ csrf() }}
+  {{ field('enrollment_no', 'Enrolment Number', values, errors, required=true,
+           help=none if existing else 'Also the temporary password. The Student changes it at first login.') }}
+  {{ field('name', 'Name', values, errors, required=true) }}
+  {{ field('course', 'Programme', values, errors, required=true, help='For example MCA.') }}
+  {{ field('semester', 'Semester', values, errors, type='number', required=true) }}
+  {{ field('section', 'Section', values, errors) }}
+  {{ field('email', 'Email', values, errors, type='email') }}
+  {{ field('mobile', 'Mobile', values, errors) }}
+  <div><button class="btn btn-primary">Save</button>
+  <a class="btn btn-link" href="{{ url_for('admin.students') }}">Cancel</a></div>
+</form>
+{% endblock %}

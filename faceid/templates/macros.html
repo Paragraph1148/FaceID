@@ -1,0 +1,27 @@
+{# A labelled input with its validation message underneath. #}
+{% macro field(name, label, values, errors, type="text", required=false, help=none) %}
+<div class="mb-3">
+  <label class="form-label" for="{{ name }}">{{ label }}{% if required %} *{% endif %}</label>
+  <input class="form-control{% if errors.get(name) %} is-invalid{% endif %}" id="{{ name }}" name="{{ name }}"
+         type="{{ type }}" value="{{ '' if type == 'password' else (values.get(name) if values.get(name) is not none else '') }}"
+         {% if required %}required{% endif %}>
+  {% if help %}<div class="form-text">{{ help }}</div>{% endif %}
+  {% if errors.get(name) %}<div class="invalid-feedback">{{ errors[name] }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+
+{# Activate / deactivate button for a list row. #}
+{% macro active_toggle(endpoint, id_name, id_value, is_active) %}
+<form method="post" class="d-inline"
+      action="{{ url_for(endpoint, action='deactivate' if is_active else 'activate', **{id_name: id_value}) }}">
+  {{ csrf() }}
+  <button class="btn btn-sm {{ 'btn-outline-danger' if is_active else 'btn-outline-success' }}">
+    {{ 'Deactivate' if is_active else 'Activate' }}</button>
+</form>
+{% endmacro %}
+
+{% macro status_badge(is_active) %}
+{% if is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}
+{% endmacro %}

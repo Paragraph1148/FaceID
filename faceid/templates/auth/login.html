@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-5">
+  <h1 class="h3 mb-3">Log in</h1>
+  <form method="post" class="card card-body">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="form-label" for="identifier">Email, or Enrolment Number for Students</label>
+    <input class="form-control mb-3" id="identifier" name="identifier" required autofocus>
+    <label class="form-label" for="password">Password</label>
+    <input class="form-control mb-3" id="password" name="password" type="password" required>
+    <button class="btn btn-primary">Log in</button>
+  </form>
+</div></div>
+{% endblock %}

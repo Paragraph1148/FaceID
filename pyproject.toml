@@ -1,0 +1,8 @@
+# Tool configuration only. Dependencies are pinned in requirements.txt; the version lives in faceid/__init__.py.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    # face_recognition_models imports pkg_resources (works while setuptools < 82, see requirements.txt)
+    "ignore:pkg_resources is deprecated:UserWarning",
+]

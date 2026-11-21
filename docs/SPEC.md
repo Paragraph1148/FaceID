@@ -58,13 +58,15 @@ The synopsis's seven tables (`admin`, `student`, `face_encoding`, `faculty`, `su
 | `face_encoding.image_path` removed | [ADR 0002](adr/0002-no-face-images-stored.md): no face images stored |
 | `student.password_hash`, `student.must_change_password` added | [ADR 0003](adr/0003-student-password-column.md): Student login |
 | `faculty.must_change_password` added | Faculty accounts are created by the Admin with a temporary password |
+| `faculty.is_active`, `subject.is_active` added | F2.1: Faculty and Subjects are deactivated, never deleted, like Students |
 | `subject.course` added | [ADR 0006](adr/0006-subjects-belong-to-a-programme.md): Expected Students |
 | `attendance.minutes_late` added (INT NULL) | [ADR 0005](adr/0005-late-earns-partial-credit.md): partial credit |
 
 Other rules:
 - `attendance` has UNIQUE (`session_id`, `student_id`), as in the synopsis.
 - `face_encoding.encoding_vector` stores 128 little-endian float64 values (1024 bytes).
-- Schema changes are applied by numbered SQL migration files. The app refuses to start on an outdated schema.
+- Foreign-key columns and the added flags are `NOT NULL`. The synopsis leaves nullability unstated for them, and none can meaningfully be empty.
+- Schema changes are applied by numbered SQL migration files. Until the schema is current, every page answers 503 and tells the operator to run `flask db-upgrade`.
 
 ## 5. Functional requirements
 
@@ -84,9 +86,9 @@ Other rules:
 
 ### 5.2 Registration (Admin)
 
-- **F2.1**: The Admin can create, edit and deactivate Students, Faculty and Subjects. Records are deactivated, never deleted. A deactivated Student is no longer an Expected Student, and their past records remain.
+- **F2.1**: The Admin can create, edit, deactivate and reactivate Students, Faculty and Subjects. Records are deactivated, never deleted. A deactivated Student is no longer an Expected Student, and their past records remain. The Admin can reset a Student's password back to the Enrolment Number, or give a Faculty member a new temporary password, for when someone forgets theirs.
 - **F2.2**: Field validation:
-  - Enrolment Numbers, Subject Codes and emails are unique.
+  - Enrolment Numbers and Subject Codes are unique. An email belongs to at most one account across Admin, Faculty and Students, because logins are looked up by email.
   - Semester is between 1 and 12.
   - Validation errors are shown next to the field they belong to.
 
@@ -169,7 +171,8 @@ Other rules:
   - Fedora Linux is the development and test platform.
 - **N5, offline**: once installed, the app makes no internet calls.
 - **N6, security**:
-  - Passwords are stored as bcrypt hashes.
+  - Passwords are stored as bcrypt hashes. Changing a password requires the current one.
+  - Logging out is a form submission, so other sites can't trigger it.
   - Forms are protected by CSRF tokens.
   - The secret key is generated on first run into an untracked instance folder.
   - Nothing secret is committed.

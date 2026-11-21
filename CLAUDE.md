@@ -23,7 +23,7 @@ Face images exist only in memory, between Capture and Face Encoding. The repo ho
 
 ## Code style
 
-The author defends this code alone in a viva. Write plain, explicit Python with type hints, small functions and one-line comments that explain *why*. Prefer the standard library to new dependencies, because every dependency must be justified against the synopsis.
+The author defends this code alone in a viva. Write plain, explicit Python with type hints on module functions (Flask views and Jinja macros are exempt), small functions and one-line comments that explain *why*. Prefer the standard library to new dependencies, because every dependency must be justified against the synopsis.
 
 ## Releases
 

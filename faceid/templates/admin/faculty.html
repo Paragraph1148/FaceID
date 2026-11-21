@@ -1,0 +1,23 @@
+{% extends "admin/layout.html" %}
+{% from "macros.html" import active_toggle, status_badge %}
+{% block title %}Faculty{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Faculty</h1>
+  <a class="btn btn-primary" href="{{ url_for('admin.faculty_form') }}">Add Faculty</a>
+</div>
+<table class="table table-hover bg-body">
+  <thead><tr><th>Name</th><th>Email</th><th>Department</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for f in faculty %}
+  <tr>
+    <td><a href="{{ url_for('admin.faculty_form', faculty_id=f.faculty_id) }}">{{ f.name }}</a></td>
+    <td>{{ f.email }}</td><td>{{ f.department }}</td><td>{{ status_badge(f.is_active) }}</td>
+    <td class="text-end">{{ active_toggle('admin.faculty_active', 'faculty_id', f.faculty_id, f.is_active) }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5" class="text-body-secondary">No Faculty yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "admin/layout.html" %}
+{% from "macros.html" import active_toggle, status_badge %}
+{% block title %}Subjects{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Subjects</h1>
+  <a class="btn btn-primary" href="{{ url_for('admin.subject_form') }}">Add Subject</a>
+</div>
+<table class="table table-hover bg-body">
+  <thead><tr><th>Code</th><th>Name</th><th>Programme</th><th>Semester</th><th>Faculty</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for s in subjects %}
+  <tr>
+    <td>{{ s.subject_code }}</td>
+    <td><a href="{{ url_for('admin.subject_form', subject_id=s.subject_id) }}">{{ s.subject_name }}</a></td>
+    <td>{{ s.course }}</td><td>{{ s.semester }}</td><td>{{ s.faculty_name }}</td>
+    <td>{{ status_badge(s.is_active) }}</td>
+    <td class="text-end">{{ active_toggle('admin.subject_active', 'subject_id', s.subject_id, s.is_active) }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7" class="text-body-secondary">No Subjects yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

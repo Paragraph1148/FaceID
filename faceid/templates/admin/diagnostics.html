@@ -1,0 +1,15 @@
+{% extends "admin/layout.html" %}
+{% block title %}Camera diagnostics{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Camera diagnostics</h1>
+<p class="text-body-secondary">Checks that the webcam and face detection work on this computer. Green boxes are detected
+faces with their width in pixels; faces narrower than about 80 px are not detected.</p>
+<div class="row g-4">
+  <div class="col-lg-8"><img class="img-fluid border rounded bg-black" src="{{ url_for('diagnostics.stream') }}" alt="Live camera feed"></div>
+  <div class="col-lg-4">
+    <table class="table table-sm bg-body">
+      {% for name, value in facts.items() %}<tr><th>{{ name }}</th><td>{{ value }}</td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}
