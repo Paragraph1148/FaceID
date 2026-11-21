@@ -150,5 +150,5 @@ def test_registration_pages_are_admin_only(app, client):
     login(client, "SSPU20260001", "SSPU20260001")
     submit(client, "/password", {"current_password": "SSPU20260001", "new_password": "my-new-pass", "confirm_password": "my-new-pass"})
 
-    for url in ("/admin/students/", "/admin/faculty/", "/admin/subjects/", "/admin/students/new", "/admin/diagnostics/"):
+    for url in ("/admin/students/", "/admin/faculty/", "/admin/subjects/", "/admin/students/new", "/admin/diagnostics/", "/admin/students/1/enrol"):
         assert client.get(url).status_code == 403, url

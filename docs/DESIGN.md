@@ -58,22 +58,30 @@ It has no clock, no IO and no dlib. Tests feed it scripted `DetectedFace` lists 
 ### `faceid/enrolment.py`: is this Capture acceptable (pure)
 
 ```python
-assess_capture(faces, sharpness, other_gallery, settings) -> Accepted(encoding) | Rejected(reason)
+assess_capture(frame, engine, others, rules) -> Accepted(encoding) | Rejected(reason)
+draft = EnrolmentDraft(student_id); draft.accept(pose, encoding); draft.missing(); draft.encodings()
 ```
 
-This holds every rejection rule in F3.2. The caller saves the returned encodings; it never sees an image.
+`assess_capture` holds every rejection rule in F3.2 and asks the engine for the cheap checks before the expensive encoding. `others` maps other Students' display names to their encodings. `EnrolmentDraft` holds the five poses in memory until they are saved.
+
+### `faceid/matching.py`: comparing encodings (pure)
+
+`face_distance(a, b)` and `nearest(encoding, gallery)`. Both Face Enrolment and live recognition use them, so matching has one definition.
 
 ### `faceid/vision.py`: the face engine (seam, two adapters)
 
 ```python
 class FaceEngine(Protocol):
     def detect(self, frame_bgr) -> list[DetectedFace]          # box + eye landmarks (cheap)
+    def sharpness(self, frame_bgr, face) -> float               # blur measure (cheap)
     def encode(self, frame_bgr, face: DetectedFace) -> encoding  # 128-d (expensive)
     def sharpness(self, frame_rgb) -> float
 ```
 
 - **`DlibEngine`**, the real engine: it wraps `face_recognition` and handles downscaling, HOG or CNN detection, and landmark extraction. It is the only file that imports `face_recognition` or `dlib`.
-- **`ScriptedEngine`**, for tests: it returns pre-set faces.
+- **`ScriptedEngine`** (`tests/fakes.py`), for tests: it returns pre-set faces.
+
+The app holds one engine in `app.extensions["face_engine"]`. Tests pass `FACE_ENGINE` in the config to replace it.
 
 ### `faceid/camera.py`: where frames come from (seam, two adapters)
 
@@ -127,9 +135,13 @@ There is one `Table` shape and three renderers, so all formats contain the same 
 
 `clean_student`, `clean_faculty` and `clean_subject` each return `(values, errors)` for one submitted form (F2.2). Uniqueness is left to the database's unique keys, plus `people.email_owner` for emails across roles.
 
-### `faceid/diagnostics.py`: camera diagnostics
+### `faceid/feed.py`: one shared camera
 
-`mjpeg_frames(config)` yields annotated frames from `WebcamSource` + `DlibEngine.detect`, holding a lock so only one viewer uses the camera.
+`CameraFeed.latest_frame()` opens the camera on first use, keeps the newest frame from a background thread, and releases the camera after 15 s without requests. The app holds one in `app.extensions["camera_feed"]`. Tests pass `CAMERA_SOURCE` to use a still camera. `LiveSession` will read from it too.
+
+### `faceid/preview.py`: live preview
+
+`mjpeg_preview(feed, engine, ...)` streams annotated frames (face boxes with width and sharpness) to the diagnostics and enrolment pages.
 
 ### `faceid/web/`: Flask (thin)
 

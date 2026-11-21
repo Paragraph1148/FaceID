@@ -8,6 +8,9 @@ import face_recognition
 import numpy as np
 
 
+SHARPNESS_WIDTH = 160  # px; the face is resized to this width before measuring sharpness
+
+
 @dataclass(frozen=True)
 class DetectedFace:
     """One face in a frame. `box` is (top, right, bottom, left) in full-frame pixels."""
@@ -42,3 +45,19 @@ class DlibEngine:
             )
             for box, marks in zip(boxes, landmarks)
         ]
+
+    def encode(self, frame_bgr: np.ndarray, face: DetectedFace) -> np.ndarray:
+        """The 128-number Face Encoding of one detected face, computed at full resolution. About 0.1 s."""
+        rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        return np.asarray(face_recognition.face_encodings(rgb, [face.box])[0], dtype=np.float64)
+
+    def sharpness(self, frame_bgr: np.ndarray, face: DetectedFace) -> float:
+        """Variance of the Laplacian over the face, resized to a fixed width so faces of any size compare fairly."""
+        top, right, bottom, left = face.box
+        height, width = frame_bgr.shape[:2]
+        crop = frame_bgr[max(top, 0):min(bottom, height), max(left, 0):min(right, width)]
+        if crop.size == 0:
+            return 0.0
+        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+        gray = cv2.resize(gray, (SHARPNESS_WIDTH, max(1, round(gray.shape[0] * SHARPNESS_WIDTH / gray.shape[1]))))
+        return float(cv2.Laplacian(gray, cv2.CV_64F).var())

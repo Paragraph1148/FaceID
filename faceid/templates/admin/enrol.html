@@ -1,0 +1,35 @@
+{% extends "admin/layout.html" %}
+{% from "macros.html" import csrf %}
+{% block title %}Face Enrolment: {{ student.name }}{% endblock %}
+{% block content %}
+<h1 class="h3">Face Enrolment: {{ student.name }} <small class="text-body-secondary">{{ student.enrollment_no }}</small></h1>
+<p class="text-body-secondary">Only {{ student.name }} should be in front of the camera. Capture each pose; a green box means
+the face is large and sharp enough. Pictures are never stored: each Capture becomes a Face Encoding and is discarded.</p>
+<div class="row g-4">
+  <div class="col-lg-7">
+    <img class="img-fluid border rounded bg-black" src="{{ url_for('enrolment.stream', student_id=student.student_id) }}" alt="Live camera">
+  </div>
+  <div class="col-lg-5">
+    <p class="fw-semibold">{{ poses|length - draft.missing()|length }} of {{ poses|length }} captured</p>
+    <ul class="list-group mb-3">
+      {% for pose, instruction in poses.items() %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <span>{% if pose in draft.captured %}<span class="text-success">&#10003;</span>{% else %}<span class="text-body-tertiary">&#9675;</span>{% endif %}
+          {{ instruction }}</span>
+        <form method="post" action="{{ url_for('enrolment.capture', student_id=student.student_id) }}" class="m-0">
+          {{ csrf() }}<input type="hidden" name="pose" value="{{ pose }}">
+          <button class="btn btn-sm {{ 'btn-outline-secondary' if pose in draft.captured else 'btn-primary' }}">
+            {{ 'Retake' if pose in draft.captured else 'Capture' }}</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    <div class="d-flex gap-2">
+      <form method="post" action="{{ url_for('enrolment.save', student_id=student.student_id) }}">
+        {{ csrf() }}<button class="btn btn-success" {% if draft.missing() %}disabled{% endif %}>Save enrolment</button></form>
+      <form method="post" action="{{ url_for('enrolment.cancel', student_id=student.student_id) }}">
+        {{ csrf() }}<button class="btn btn-outline-secondary">Discard captures</button></form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -98,10 +98,11 @@ Other rules:
 - **F3.2**: A Capture is rejected, with a reason shown, if any of these is true:
   - It contains zero faces or more than one face.
   - The face is narrower than 80 px.
-  - The image is blurred (variance of the Laplacian below a set threshold).
+  - The image is blurred: the variance of the Laplacian over the face, resized to 160 px wide, is below `MIN_SHARPNESS`. The default is 30, calibrated on the demo laptop using the sharpness value the live preview shows on each face.
   - It matches a *different* Student within the Tolerance. This rejection names the other Student.
 - **F3.3**: Each accepted Capture becomes one Face Encoding. The image is discarded in memory and never written to disk or the database.
-- **F3.4**: Re-enrolling a Student replaces all of their Face Encodings in one transaction.
+- **F3.4**: Re-enrolling a Student replaces all of their Face Encodings in one transaction. Until saved, Captures are kept in memory only and can be retaken or discarded.
+- **F3.5**: The enrolment page shows the live camera. Each face's box shows its width and sharpness and turns green when both pass, so the Admin sees a problem before pressing Capture. The Student list shows who is enrolled.
 
 ### 5.4 Live recognition
 
