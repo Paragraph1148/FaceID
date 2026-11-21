@@ -17,8 +17,12 @@ A person enrolled in the college whose attendance is recorded. Identified to peo
 _Avoid_: User, learner
 
 **Enrolment Number**:
-The university-issued identifier of a Student, e.g. `SSPU20260001`.
-_Avoid_: Roll number, student ID, enrollment ID
+The university-issued identifier of a Student, e.g. `SSPU20260001`. Stored as `enrollment_no`, the synopsis's column name.
+_Avoid_: Roll number, student ID, enrollment ID (in prose)
+
+**Registration**:
+Entering or editing the details of a Student, Faculty member or Subject. It never involves faces.
+_Avoid_: Sign-up, onboarding
 
 ## Teaching
 

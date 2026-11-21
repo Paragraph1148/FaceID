@@ -67,8 +67,8 @@ This holds every rejection rule in F3.2. The caller saves the returned encodings
 
 ```python
 class FaceEngine(Protocol):
-    def detect(self, frame_rgb) -> list[DetectedFace]          # box + eye landmarks (cheap)
-    def encode(self, frame_rgb, face: DetectedFace) -> encoding  # 128-d (expensive)
+    def detect(self, frame_bgr) -> list[DetectedFace]          # box + eye landmarks (cheap)
+    def encode(self, frame_bgr, face: DetectedFace) -> encoding  # 128-d (expensive)
     def sharpness(self, frame_rgb) -> float
 ```
 
@@ -122,6 +122,14 @@ data  = render(table, "xlsx" | "pdf" | "csv")  # -> bytes
 ```
 
 There is one `Table` shape and three renderers, so all formats contain the same rows by construction (F6.2).
+
+### `faceid/registration.py`: Registration form rules (pure)
+
+`clean_student`, `clean_faculty` and `clean_subject` each return `(values, errors)` for one submitted form (F2.2). Uniqueness is left to the database's unique keys, plus `people.email_owner` for emails across roles.
+
+### `faceid/diagnostics.py`: camera diagnostics
+
+`mjpeg_frames(config)` yields annotated frames from `WebcamSource` + `DlibEngine.detect`, holding a lock so only one viewer uses the camera.
 
 ### `faceid/web/`: Flask (thin)
 

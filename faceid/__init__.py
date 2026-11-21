@@ -1,11 +1,14 @@
 """FaceID: face-recognition attendance system."""
 
-__version__ = "0.1.0.dev0"
+__version__ = "0.1.0"
 
 import warnings
 
 # face_recognition_models imports pkg_resources, which warns on every start. Harmless while setuptools < 82.
 warnings.filterwarnings("ignore", message="pkg_resources is deprecated", category=UserWarning)
+
+import secrets
+from pathlib import Path
 
 from flask import Flask, render_template
 
@@ -13,13 +16,15 @@ from faceid import cli, settings
 from faceid.store import db
 
 
-def create_app(config=None):
+def create_app(config: dict | None = None, instance_path: str | None = None) -> Flask:
     """Build the Flask app. `config` overrides `instance/config.py` (used by tests)."""
-    app = Flask(__name__, instance_relative_config=True)
+    app = Flask(__name__, instance_relative_config=True, instance_path=instance_path)
     app.config.from_pyfile("config.py", silent=True)
     if config:
         app.config.update(config)
     settings.apply_defaults(app.config)
+    if not app.config.get("SECRET_KEY"):
+        app.config["SECRET_KEY"] = _instance_secret_key(Path(app.instance_path))
 
     app.teardown_appcontext(db.close)
     cli.register(app)
@@ -45,3 +50,12 @@ def create_app(config=None):
     app.before_request(auth.force_password_change)
 
     return app
+
+
+def _instance_secret_key(instance_dir: Path) -> str:
+    """Read the secret key from the untracked instance folder, generating it on first run (N6)."""
+    key_file = instance_dir / "secret_key"
+    if not key_file.exists():
+        instance_dir.mkdir(parents=True, exist_ok=True)
+        key_file.write_text(secrets.token_hex(32), encoding="ascii")
+    return key_file.read_text(encoding="ascii").strip()

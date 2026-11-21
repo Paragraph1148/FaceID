@@ -103,7 +103,7 @@ def test_duplicate_faculty_email_is_refused(admin_client):
 
     page = add_faculty(admin_client, name="Someone Else")
 
-    assert "already used by another Faculty" in page.get_data(as_text=True)
+    assert "already used by another account" in page.get_data(as_text=True)
 
 
 def test_faculty_temporary_password_must_be_long_enough(admin_client):
@@ -148,7 +148,7 @@ def test_registration_pages_are_admin_only(app, client):
 
     add_student(app)
     login(client, "SSPU20260001", "SSPU20260001")
-    submit(client, "/password", {"new_password": "my-new-pass", "confirm_password": "my-new-pass"})
+    submit(client, "/password", {"current_password": "SSPU20260001", "new_password": "my-new-pass", "confirm_password": "my-new-pass"})
 
     for url in ("/admin/students/", "/admin/faculty/", "/admin/subjects/", "/admin/students/new", "/admin/diagnostics/"):
         assert client.get(url).status_code == 403, url

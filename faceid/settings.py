@@ -12,6 +12,6 @@ DEFAULTS = {
 }
 
 
-def apply_defaults(config):
+def apply_defaults(config: dict) -> None:
     for key, value in DEFAULTS.items():
         config.setdefault(key, value)

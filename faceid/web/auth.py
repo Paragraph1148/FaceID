@@ -95,14 +95,21 @@ def login():
         identifier = request.form.get("identifier", "").strip()
         password = request.form.get("password", "")
         found = people.find_login(identifier)
-        if found and check_password(password, found[1]["password_hash"]):
+        if found and _password_matches(*found, password):
             login_user(Account(*found))
             return redirect(url_for("auth.index"))
         flash("Wrong login or password.", "danger")
     return render_template("auth/login.html")
 
 
-@bp.route("/logout")
+def _password_matches(role: str, row: dict, password: str) -> bool:
+    if check_password(password, row["password_hash"]):
+        return True
+    # A Student's temporary password is their Enrolment Number, stored in capitals: accept it typed in any case.
+    return role == "student" and bool(row["must_change_password"]) and check_password(password.upper(), row["password_hash"])
+
+
+@bp.route("/logout", methods=["POST"])
 def logout():
     logout_user()
     return redirect(url_for("auth.login"))
@@ -114,7 +121,10 @@ def change_password():
     if request.method == "POST":
         new = request.form.get("new_password", "")
         error = problem_with(new)
-        if new != request.form.get("confirm_password", ""):
+        row = {"password_hash": current_user.password_hash, "must_change_password": current_user.must_change_password}
+        if not _password_matches(current_user.role, row, request.form.get("current_password", "")):
+            error = "Current password is wrong."
+        elif new != request.form.get("confirm_password", ""):
             error = "The two passwords do not match."
         elif error is None and check_password(new, current_user.password_hash):
             error = "The new password must be different from the current one."

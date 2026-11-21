@@ -11,9 +11,17 @@ bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 DUPLICATE_MESSAGES = {
     "enrollment_no": "This Enrolment Number is already used by another Student.",
-    "email": "This email is already used by another {who}.",
+    "email": "This email is already used by another account.",
     "subject_code": "This Subject Code is already used by another Subject.",
 }
+
+
+def _email_taken(email: str | None, role: str, account_id: int | None) -> dict:
+    """{"email": message} if another account of any role already uses `email`. Logins are looked up by email."""
+    owner = people.email_owner(email) if email else None
+    if owner and owner != (role, account_id):
+        return {"email": "This email is already used by another account."}
+    return {}
 
 
 def _duplicate_error(error, who):
@@ -49,6 +57,7 @@ def student_form(student_id=None):
     values, errors = existing or {}, {}
     if request.method == "POST":
         values, errors = registration.clean_student(request.form)
+        errors = errors or _email_taken(values["email"], "student", student_id)
         if not errors:
             try:
                 if existing:
@@ -73,7 +82,8 @@ def student_active(student_id, action):
 @bp.route("/students/<int:student_id>/reset-password", methods=["POST"])
 @role_required("admin")
 def student_reset_password(student_id):
-    people.reset_student_password(student_id)
+    if not people.reset_student_password(student_id):
+        abort(404)
     flash("Password reset to the Enrolment Number. The Student must change it at next login.", "success")
     return redirect(url_for("admin.students"))
 
@@ -97,6 +107,7 @@ def faculty_form(faculty_id=None):
     values, errors = existing or {}, {}
     if request.method == "POST":
         values, errors = registration.clean_faculty(request.form, is_new=existing is None)
+        errors = errors or _email_taken(values["email"], "faculty", faculty_id)
         if not errors:
             try:
                 if existing:

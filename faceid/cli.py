@@ -32,6 +32,8 @@ def create_admin(username, email, password):
     error = problem_with(password)
     if error:
         raise click.ClickException(error)
+    if people.email_owner(email.strip()):
+        raise click.ClickException(f"{email} is already used by another account.")
     people.create_admin(username.strip(), email.strip(), password)
     click.echo(f"Admin {email} created.")
 

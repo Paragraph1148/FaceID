@@ -1,4 +1,4 @@
--- SPEC §4: the synopsis's seven tables with the changes recorded in ADRs 0002, 0003, 0005 and 0006.
+-- SPEC §4: the synopsis's seven tables with the changes listed in its change table (ADRs 0002, 0003, 0005, 0006).
 
 CREATE TABLE admin (
     admin_id      INT AUTO_INCREMENT PRIMARY KEY,

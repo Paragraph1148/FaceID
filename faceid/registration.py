@@ -1,4 +1,4 @@
-"""Validation of the Admin's registration forms (SPEC F2.2).
+"""Validation of the Admin's Registration forms (SPEC F2.2).
 
 Each `clean_*` function takes the submitted form and returns (values, errors):
 `values` holds the cleaned fields and `errors` maps a field name to a message for that field.
@@ -12,18 +12,18 @@ from faceid.passwords import problem_with
 EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
-def _text(form, field):
+def _text(form, field: str) -> str:
     return (form.get(field) or "").strip()
 
 
-def _required(values, errors, field, label, max_length):
+def _required(values: dict, errors: dict, field: str, label: str, max_length: int) -> None:
     if not values[field]:
         errors[field] = f"{label} is required."
     elif len(values[field]) > max_length:
         errors[field] = f"{label} must be at most {max_length} characters."
 
 
-def _semester(values, errors):
+def _semester(values: dict, errors: dict) -> None:
     raw = values["semester"]
     if raw.isdigit() and 1 <= int(raw) <= 12:
         values["semester"] = int(raw)
@@ -31,7 +31,7 @@ def _semester(values, errors):
         errors["semester"] = "Semester must be a number from 1 to 12."
 
 
-def _email(values, errors, required):
+def _email(values: dict, errors: dict, required: bool) -> None:
     if not values["email"]:
         values["email"] = None
         if required:
@@ -40,7 +40,7 @@ def _email(values, errors, required):
         errors["email"] = "Enter a valid email address."
 
 
-def clean_student(form):
+def clean_student(form) -> tuple[dict, dict]:
     fields = ("enrollment_no", "name", "email", "mobile", "course", "semester", "section")
     values = {field: _text(form, field) for field in fields}
     values["enrollment_no"] = values["enrollment_no"].upper()
@@ -60,7 +60,7 @@ def clean_student(form):
     return values, errors
 
 
-def clean_faculty(form, is_new):
+def clean_faculty(form, is_new: bool) -> tuple[dict, dict]:
     values = {field: _text(form, field) for field in ("name", "email", "department")}
     values["temporary_password"] = form.get("temporary_password") or ""
     errors = {}
@@ -74,7 +74,7 @@ def clean_faculty(form, is_new):
     return values, errors
 
 
-def clean_subject(form, active_faculty_ids):
+def clean_subject(form, active_faculty_ids: set[int]) -> tuple[dict, dict]:
     fields = ("subject_code", "subject_name", "course", "semester", "faculty_id")
     values = {field: _text(form, field) for field in fields}
     values["subject_code"] = values["subject_code"].upper()

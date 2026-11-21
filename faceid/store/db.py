@@ -11,7 +11,7 @@ from flask import current_app, g
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 
 
-def _connect(config, with_database=True):
+def _connect(config, with_database: bool = True):
     return mysql.connector.connect(
         host=config["DB_HOST"],
         port=config["DB_PORT"],
@@ -28,13 +28,13 @@ def connection():
     return g.db
 
 
-def close(_error=None):
+def close(_error: BaseException | None = None) -> None:
     conn = g.pop("db", None)
     if conn is not None:
         conn.close()
 
 
-def query(sql, params=()):
+def query(sql: str, params: tuple = ()) -> list[dict]:
     cursor = connection().cursor(dictionary=True)
     cursor.execute(sql, params)
     rows = cursor.fetchall()
@@ -42,12 +42,12 @@ def query(sql, params=()):
     return rows
 
 
-def query_one(sql, params=()):
+def query_one(sql: str, params: tuple = ()) -> dict | None:
     rows = query(sql, params)
     return rows[0] if rows else None
 
 
-def execute(sql, params=()):
+def execute(sql: str, params: tuple = ()) -> int:
     """Run one statement and commit. Returns the new row id for INSERTs."""
     conn = connection()
     cursor = conn.cursor()
@@ -58,7 +58,7 @@ def execute(sql, params=()):
     return new_id
 
 
-def duplicate_field(error):
+def duplicate_field(error: Exception) -> str | None:
     """For a duplicate-key IntegrityError, the column that clashed (e.g. "email"); otherwise None.
 
     MySQL reports it as: Duplicate entry 'x' for key 'student.enrollment_no'.
@@ -69,7 +69,7 @@ def duplicate_field(error):
     return key.split(".")[-1]
 
 
-def drop_database(config):
+def drop_database(config) -> None:
     conn = _connect(config, with_database=False)
     conn.cursor().execute(f"DROP DATABASE IF EXISTS `{config['DB_NAME']}`")
     conn.close()
@@ -78,17 +78,17 @@ def drop_database(config):
 # --- Migrations -------------------------------------------------------------
 
 
-def _migration_files():
+def _migration_files() -> list[Path]:
     return sorted(MIGRATIONS_DIR.glob("[0-9][0-9][0-9][0-9]_*.sql"))
 
 
-def _statements(sql_text):
+def _statements(sql_text: str) -> list[str]:
     # Our migrations are plain DDL, so splitting on ";" is safe. Comment lines are dropped first.
     lines = [line for line in sql_text.splitlines() if not line.strip().startswith("--")]
     return [statement.strip() for statement in "\n".join(lines).split(";") if statement.strip()]
 
 
-def _applied_versions(cursor):
+def _applied_versions(cursor) -> set[int]:
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS schema_migrations ("
         " version INT PRIMARY KEY, applied_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
@@ -97,7 +97,7 @@ def _applied_versions(cursor):
     return {row[0] for row in cursor.fetchall()}
 
 
-def upgrade(config):
+def upgrade(config) -> list[str]:
     """Create the database if needed and apply pending migrations. Returns the names applied."""
     server = _connect(config, with_database=False)
     server.cursor().execute(
@@ -122,7 +122,7 @@ def upgrade(config):
     return newly_applied
 
 
-def is_up_to_date(config):
+def is_up_to_date(config) -> bool:
     """True when every migration file has been applied."""
     latest = int(_migration_files()[-1].name[:4])
     try:

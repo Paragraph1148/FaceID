@@ -50,7 +50,7 @@ def test_student_logs_in_with_enrolment_number_and_must_change_password_first(ap
     assert "Choose a new password" in page.get_data(as_text=True)
     assert client.get("/student/").headers["Location"].endswith("/password")
 
-    page = submit(client, "/password", {"new_password": "my-new-pass", "confirm_password": "my-new-pass"})
+    page = submit(client, "/password", {"current_password": "SSPU20260001", "new_password": "my-new-pass", "confirm_password": "my-new-pass"})
     assert "Student dashboard" in page.get_data(as_text=True)
 
     client.get("/logout")
@@ -62,7 +62,7 @@ def test_new_password_must_differ_from_the_temporary_one(app, client):
     add_student(app)
     login(client, "SSPU20260001", "SSPU20260001")
 
-    page = submit(client, "/password", {"new_password": "SSPU20260001", "confirm_password": "SSPU20260001"})
+    page = submit(client, "/password", {"current_password": "SSPU20260001", "new_password": "SSPU20260001", "confirm_password": "SSPU20260001"})
 
     assert "must be different" in page.get_data(as_text=True)
 
@@ -71,7 +71,7 @@ def test_faculty_logs_in_with_email(app, client):
     add_faculty(app)
     login(client, "teacher@college.test", "temp-pass-1")
 
-    page = submit(client, "/password", {"new_password": "faculty-pass", "confirm_password": "faculty-pass"})
+    page = submit(client, "/password", {"current_password": "temp-pass-1", "new_password": "faculty-pass", "confirm_password": "faculty-pass"})
 
     assert "Faculty dashboard" in page.get_data(as_text=True)
 
@@ -79,7 +79,7 @@ def test_faculty_logs_in_with_email(app, client):
 def test_each_role_is_kept_out_of_the_others_pages(app, client):
     add_student(app)
     login(client, "SSPU20260001", "SSPU20260001")
-    submit(client, "/password", {"new_password": "my-new-pass", "confirm_password": "my-new-pass"})
+    submit(client, "/password", {"current_password": "SSPU20260001", "new_password": "my-new-pass", "confirm_password": "my-new-pass"})
 
     assert client.get("/admin/").status_code == 403
     assert client.get("/faculty/").status_code == 403

@@ -13,7 +13,10 @@
     {% if current_user.is_authenticated %}
     <div class="navbar-nav me-auto">{% block nav %}{% endblock %}</div>
     <span class="navbar-text me-3">{{ current_user.name }} · {{ current_user.role|capitalize }}</span>
-    <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.logout') }}">Log out</a>
+    <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-light btn-sm">Log out</button>
+    </form>
     {% endif %}
   </div>
 </nav>

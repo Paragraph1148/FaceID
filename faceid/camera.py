@@ -7,6 +7,7 @@ import sys
 from dataclasses import dataclass
 
 import cv2
+import numpy as np
 
 # DirectShow on Windows: Media Foundation (the default) can take minutes to open some webcams.
 BACKEND = cv2.CAP_DSHOW if sys.platform == "win32" else cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY
@@ -26,7 +27,7 @@ class CameraInfo:
 
 
 class WebcamSource:
-    def __init__(self, index, width, height):
+    def __init__(self, index: int, width: int, height: int):
         self._capture = cv2.VideoCapture(index, BACKEND)
         if not self._capture.isOpened():
             raise CameraUnavailable(f"Camera {index} could not be opened (backend {BACKEND_NAME}).")
@@ -34,7 +35,7 @@ class WebcamSource:
         self._capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self._capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
-    def info(self):
+    def info(self) -> CameraInfo:
         return CameraInfo(
             backend=BACKEND_NAME,
             width=int(self._capture.get(cv2.CAP_PROP_FRAME_WIDTH)),
@@ -42,10 +43,10 @@ class WebcamSource:
             reported_fps=self._capture.get(cv2.CAP_PROP_FPS),
         )
 
-    def read(self):
+    def read(self) -> np.ndarray | None:
         """The next frame as a BGR array, or None if the camera returned nothing."""
         ok, frame = self._capture.read()
         return frame if ok else None
 
-    def close(self):
+    def close(self) -> None:
         self._capture.release()
