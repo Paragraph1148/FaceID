@@ -5,6 +5,7 @@
 
 import sys
 from dataclasses import dataclass
+from typing import Protocol
 
 import cv2
 import numpy as np
@@ -12,6 +13,13 @@ import numpy as np
 # DirectShow on Windows: Media Foundation (the default) can take minutes to open some webcams.
 BACKEND = cv2.CAP_DSHOW if sys.platform == "win32" else cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY
 BACKEND_NAME = {cv2.CAP_DSHOW: "DirectShow", cv2.CAP_V4L2: "V4L2", cv2.CAP_ANY: "default"}[BACKEND]
+
+
+class FrameSource(Protocol):
+    """Anything that delivers frames: the webcam, or (in tests and evaluation) a still image or video file."""
+
+    def read(self) -> np.ndarray | None: ...
+    def close(self) -> None: ...
 
 
 class CameraUnavailable(Exception):

@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from fakes import ScriptedEngine, StillCamera
+
 from faceid import create_app, passwords
 from faceid.store import db
 
@@ -23,10 +25,10 @@ def test_config():
 
 
 @pytest.fixture
-def empty_app(test_config):
+def empty_app(test_config, engine):
     """An app whose database does not exist yet."""
     db.drop_database(test_config)
-    return create_app(test_config)
+    return create_app({**test_config, "FACE_ENGINE": engine, "CAMERA_SOURCE": StillCamera})
 
 
 @pytest.fixture
@@ -35,11 +37,19 @@ def cli(empty_app):
 
 
 @pytest.fixture
-def app(test_config):
-    """An app on a freshly upgraded, empty database."""
+def engine():
+    """The scripted face engine every app in the tests uses. Tests choose its faces with `engine.show(...)`."""
+    return ScriptedEngine()
+
+
+@pytest.fixture
+def app(test_config, engine):
+    """An app on a freshly upgraded, empty database, with a still camera and the scripted face engine."""
     db.drop_database(test_config)
     db.upgrade(test_config)
-    return create_app(test_config)
+    app = create_app({**test_config, "FACE_ENGINE": engine, "CAMERA_SOURCE": StillCamera})
+    yield app
+    app.extensions["camera_feed"].stop()
 
 
 @pytest.fixture
@@ -63,9 +73,9 @@ def login(client, identifier, password):
     return submit(client, "/login", {"identifier": identifier, "password": password})
 
 
-def create_admin(app, email="admin@college.test", password="admin-pass-1"):
+def create_admin(app, email="admin@college.test", password="admin-pass-1", username="admin"):
     result = app.test_cli_runner().invoke(
-        args=["create-admin"], input=f"admin\n{email}\n{password}\n{password}\n"
+        args=["create-admin"], input=f"{username}\n{email}\n{password}\n{password}\n"
     )
     assert result.exit_code == 0, result.output
     return email, password

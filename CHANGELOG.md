@@ -7,6 +7,23 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-21
+
+### Added
+
+- Face Enrolment: the Admin enrols a Student from five guided Captures (front, left, right, chin up, chin down) with a live camera preview. Each Capture becomes a 128-number Face Encoding and the picture is discarded immediately; nothing is saved until all five are captured.
+- Captures are refused, with the reason shown, when there is no face, more than one face, the face is too small or blurred, or it matches another enrolled Student.
+- Re-enrolling replaces a Student's encodings in one transaction. The Student list shows who is enrolled.
+- The live preview, on both the enrolment and diagnostics pages, labels each face with its width and sharpness.
+- Each browser login keeps its own enrolment draft, forgotten after 30 minutes untouched. Saving re-checks the faces against Students enrolled in the meantime.
+- Deactivated Students can't be enrolled, and their faces don't block other Students.
+
+### Changed
+
+- The webcam is shared between pages through one camera feed. It is released after 15 seconds unused and when the server stops, which fixes a crash on Ctrl+C. Captures only ever use a frame less than a second old, and the last frame is dropped when the camera is released.
+- Calls into dlib take turns, because pages are served on several threads.
+- `flask create-admin` reports a taken username clearly, without a traceback.
+
 ## [0.1.0] - 2026-11-21
 
 First build for the demo laptop. It proves the stack (dlib, webcam, MySQL) works there.
@@ -23,5 +40,6 @@ First build for the demo laptop. It proves the stack (dlib, webcam, MySQL) works
 - Bootstrap 5.3.9 is stored in the repo, so the app works offline.
 - Planning documents: specification, module design, glossary, ADRs 0001–0006, stack research, and the camera spike findings.
 
-[Unreleased]: https://github.com/Paragraph1148/FaceID/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Paragraph1148/FaceID/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Paragraph1148/FaceID/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Paragraph1148/FaceID/releases/tag/v0.1.0

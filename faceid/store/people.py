@@ -3,6 +3,8 @@
 Password hashes never leave this module except through `find_login` and `get_account`, which login needs.
 """
 
+import numpy as np
+
 from faceid.passwords import hash_password
 from faceid.store import db
 
@@ -96,7 +98,12 @@ def create_student(
 
 
 def list_students() -> list[dict]:
-    return db.query(f"SELECT {STUDENT_FIELDS} FROM student ORDER BY is_active DESC, course, semester, enrollment_no")
+    """Every Student with `encoding_count`, the number of stored Face Encodings (0 means not enrolled)."""
+    return db.query(
+        f"SELECT {STUDENT_FIELDS},"
+        " (SELECT COUNT(*) FROM face_encoding e WHERE e.student_id = student.student_id) AS encoding_count"
+        " FROM student ORDER BY is_active DESC, course, semester, enrollment_no"
+    )
 
 
 def get_student(student_id: int) -> dict | None:
@@ -165,3 +172,49 @@ def update_faculty(faculty_id: int, name: str, email: str, department: str, temp
 def set_active(role: str, account_id: int, active: bool) -> None:
     table, id_column = ROLE_TABLES[role]
     db.execute(f"UPDATE {table} SET is_active = %s WHERE {id_column} = %s", (active, account_id))
+
+
+# --- Face Encodings (F3) ---
+# Stored as 128 little-endian float64 values (SPEC §4). No images, ever (ADR 0002).
+
+
+def _to_blob(encoding: np.ndarray) -> bytes:
+    blob = np.asarray(encoding, dtype="<f8").tobytes()
+    if len(blob) != 128 * 8:
+        raise ValueError("a Face Encoding must have 128 numbers")
+    return blob
+
+
+ENCODING_BYTES = 128 * 8
+
+
+def _from_blob(blob: bytes) -> np.ndarray:
+    if len(blob) != ENCODING_BYTES:
+        raise ValueError(f"a Face Encoding must be {ENCODING_BYTES} bytes, got {len(blob)}")
+    return np.frombuffer(blob, dtype="<f8").astype(np.float64)
+
+
+def replace_encodings(student_id: int, encodings: list[np.ndarray]) -> None:
+    """Make `encodings` the Student's only Face Encodings, in one transaction (F3.4)."""
+    with db.transaction() as cursor:
+        cursor.execute("DELETE FROM face_encoding WHERE student_id = %s", (student_id,))
+        cursor.executemany(
+            "INSERT INTO face_encoding (student_id, encoding_vector) VALUES (%s, %s)",
+            [(student_id, _to_blob(encoding)) for encoding in encodings],
+        )
+
+
+def encodings_of_other_students(student_id: int) -> dict[str, list[np.ndarray]]:
+    """Every other *active* Student's Face Encodings, keyed by "Name (Enrolment Number)" for messages.
+
+    Deactivated Students can't attend, so their faces don't block anyone (SPEC F3.2).
+    """
+    rows = db.query(
+        "SELECT s.name, s.enrollment_no, e.encoding_vector FROM face_encoding e"
+        " JOIN student s ON s.student_id = e.student_id WHERE e.student_id <> %s AND s.is_active",
+        (student_id,),
+    )
+    gallery: dict[str, list[np.ndarray]] = {}
+    for row in rows:
+        gallery.setdefault(f"{row['name']} ({row['enrollment_no']})", []).append(_from_blob(row["encoding_vector"]))
+    return gallery

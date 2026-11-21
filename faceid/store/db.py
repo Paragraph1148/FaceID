@@ -3,6 +3,7 @@
 One connection per request, kept on Flask's `g`. Queries return rows as dicts.
 """
 
+from contextlib import contextmanager
 from pathlib import Path
 
 import mysql.connector
@@ -67,6 +68,21 @@ def duplicate_field(error: Exception) -> str | None:
         return None
     key = str(error.msg).rsplit("for key '", 1)[-1].rstrip("'")
     return key.split(".")[-1]
+
+
+@contextmanager
+def transaction():
+    """A cursor whose statements commit together, or not at all if anything inside raises."""
+    conn = connection()
+    cursor = conn.cursor()
+    try:
+        yield cursor
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    finally:
+        cursor.close()
 
 
 def drop_database(config) -> None:

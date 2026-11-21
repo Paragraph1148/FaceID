@@ -1,11 +1,12 @@
-"""Camera diagnostics page (Admin only). The work happens in `faceid.diagnostics`."""
+"""Camera diagnostics page (Admin only): proves the webcam and dlib work on this machine (SPEC §8, v0.1.0)."""
 
 import platform
 
 import cv2
-from flask import Blueprint, Response, current_app, render_template
+from flask import Blueprint, current_app, render_template
 
-from faceid import diagnostics, vision
+from faceid import vision
+from faceid.web.preview import preview_response
 from faceid.web.auth import role_required
 
 bp = Blueprint("diagnostics", __name__, url_prefix="/admin/diagnostics")
@@ -29,5 +30,4 @@ def page():
 @bp.route("/stream")
 @role_required("admin")
 def stream():
-    frames = diagnostics.mjpeg_frames(dict(current_app.config))
-    return Response(frames, mimetype="multipart/x-mixed-replace; boundary=frame")
+    return preview_response()
