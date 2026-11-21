@@ -40,12 +40,14 @@ This is the deepest module, holding the recognition logic behind O2 and O4.
 
 ```python
 tracker = PresenceTracker(gallery, settings)  # gallery: {student_id: [encodings]}
-result = tracker.observe(faces)               # faces: list[DetectedFace] from vision
+result = tracker.observe(faces, encode)       # faces: list[DetectedFace] (box + eye landmarks) from vision
+                                              # encode: callable(face) -> 128-d encoding, called only when needed
 result.annotations       # box, label, state for each face: unknown / waiting-for-blink / marked
 result.newly_confirmed   # [(student_id, face_distance)] that just met F4.3
 ```
 
 Inside it:
+- Following each face from frame to frame by box overlap. A face is encoded only while it isn't yet identified. Encoding costs about 0.1 s per face, so encoding every face in every frame would drop 10 faces to about 1 frame per second, as the spike showed.
 - Nearest-encoding matching within the Tolerance.
 - The count of consecutive matching frames per Student.
 - The Eye Aspect Ratio history and the Blink state machine per Student.
@@ -65,7 +67,8 @@ This holds every rejection rule in F3.2. The caller saves the returned encodings
 
 ```python
 class FaceEngine(Protocol):
-    def analyse(self, frame_rgb) -> list[DetectedFace]  # box, 128-d encoding, eye landmarks
+    def detect(self, frame_rgb) -> list[DetectedFace]          # box + eye landmarks (cheap)
+    def encode(self, frame_rgb, face: DetectedFace) -> encoding  # 128-d (expensive)
     def sharpness(self, frame_rgb) -> float
 ```
 
@@ -93,7 +96,7 @@ live.status()             # marked / expected counts, per-student states
 live.stop()
 ```
 
-One capture thread keeps the latest frame. One recognition thread does three things in a loop: `engine.analyse` → `tracker.observe` → for each newly confirmed Student, `attendance.status_for` and `store.mark`. This is the only module with threads, and the server holds one `LiveSession` because there is one camera (ADR 0004).
+One capture thread keeps the latest frame. One recognition thread does three things in a loop: `engine.detect` → `tracker.observe` (which calls `engine.encode` only for unidentified faces) → for each newly confirmed Student, `attendance.status_for` and `store.mark`. This is the only module with threads, and the server holds one `LiveSession` because there is one camera (ADR 0004).
 
 ### `faceid/store/`: MySQL persistence
 

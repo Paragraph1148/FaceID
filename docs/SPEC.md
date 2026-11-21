@@ -103,16 +103,18 @@ Other rules:
 
 ### 5.4 Live recognition
 
-- **F4.1**: While a Class Session is open, the server reads frames from the webcam (DirectShow on Windows, V4L2 on Linux).
-  - It runs HOG detection on a downscaled copy of each processed frame, encodes every detected face, and compares each encoding with the cached encodings of that session's Expected Students.
+- **F4.1**: While a Class Session is open, the server reads frames from the webcam (DirectShow on Windows, V4L2 on Linux), requesting MJPG at 1280×720.
+  - It runs HOG detection on every processed frame at full resolution and follows each face from frame to frame.
+  - A followed face is encoded until it is identified (or labelled Unknown), and compared with the cached encodings of that session's Expected Students. After that, only its eye landmarks are read each frame.
+  - Encoding is the expensive step, about 0.1 s per face on the development laptop, so only faces still being identified are encoded.
   - The detector is a setting: `hog` (default) or `cnn`.
 - **F4.2**: A face matches the Student with the smallest Face Distance, if that distance is ≤ the Tolerance (default 0.6). Otherwise it's labelled "Unknown".
 - **F4.3**: A Student is **marked** only when all three of these hold:
   1. They matched in the Confirmation Frames number of consecutive processed frames (default 3).
-  2. A Blink was seen on their face during the session. Blink means: the Eye Aspect Ratio, averaged over both eyes using the 6-point eye landmarks, falls below 0.22 for at least 2 consecutive processed frames and then rises above it.
+  2. A Blink was seen on their face during the session. Blink means: the Eye Aspect Ratio, averaged over both eyes using the 6-point eye landmarks, falls below 0.25 for at least 1 processed frame and then rises back above it.
   3. If the Spoof Check is enabled, it passes.
 - **F4.4**: The browser shows the live feed with a box and name on each face, coloured by state: unknown, matched but waiting for a blink, or marked. Beside it is a running "marked / expected" count.
-- **F4.5**: Tolerance, Confirmation Frames, the EAR threshold, the blink frame count, the downscale factor, the detector and the Late Threshold are all settings in one config file. None of them is hard-coded.
+- **F4.5**: Tolerance, Confirmation Frames, the EAR threshold, the blink frame count, the detection scale and upsampling, the detector and the Late Threshold are all settings in one config file. None of them is hard-coded.
 - **F4.6**: Encodings for the session's Expected Students are loaded into memory once when the session opens, as the synopsis's "cached at startup" requires. They are reloaded if Face Enrolment changes during a session.
 
 ### 5.5 Class Sessions and attendance marking (Faculty)
@@ -155,7 +157,11 @@ Other rules:
 
 ## 6. Non-functional requirements
 
-- **N1, speed**: at least 5 processed frames per second, with up to 10 faces in the frame on the demo laptop. The live view stays smooth because capture and recognition run in separate threads.
+- **N1, speed**: measured on the demo laptop:
+  - The live view runs at 20 frames per second or more.
+  - With up to 10 already-identified faces in frame, recognition processes at least 5 frames per second.
+  - A new face is identified within 1 second of appearing.
+  - Capture and recognition run in separate threads, which stop cleanly when the session or server stops.
 - **N2, accuracy**: identification rate of at least 90% on the classroom evaluation in §7.2, and no wrong-Student marks in it.
 - **N3, privacy**: no face images are stored anywhere (F3.3). The database and backups contain encodings only.
 - **N4, platforms**:
@@ -199,5 +205,5 @@ Each milestone goes through a `feat/` branch, a PR, `code-review`, a merge to `m
 - **Blink liveness**: it can be fooled by a video replay of the Student. The optional Spoof Check reduces this risk but doesn't remove it.
 - **Software versions**: Python 3.10 and MySQL 8.0 are past end of life (ADR 0001).
 - **CPU only**: the prebuilt dlib can't use a GPU, so CNN detection is slow.
-- **Small faces**: accuracy drops for faces far from a 720p webcam. §7.2 measures where.
+- **Distance from the camera**: HOG needs a face about 80 px wide, or 40 px with upsampling at roughly 4× the cost. On a 720p laptop webcam that is about 1.7 m by default and about 3.5 m with upsampling. Students further back aren't detected. The synopsis's recommended 1080p webcam extends both distances by half. §7.2 measures the real limits.
 - **Re-enrolment**: changing the encoding model means everyone must be enrolled again (ADR 0002).
