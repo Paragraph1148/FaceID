@@ -27,13 +27,13 @@ The author defends this code alone in a viva. Write plain, explicit Python with 
 
 ## Releases
 
-Semver, starting at 0.1.0. Each milestone in SPEC §8 goes through:
-1. A `feat/<milestone>` branch.
+Semver, starting at 0.1.0. Plain git only: there are no GitHub PRs and the `gh` CLI is not installed. Each milestone in SPEC §8 goes through:
+1. A `feat/<milestone>` branch, pushed.
 2. TDD.
-3. A PR.
-4. `code-review`.
-5. A merge to `main`.
-6. A `vX.Y.Z` tag and a `CHANGELOG.md` entry.
-7. A push. Push without asking.
+3. `code-review` against `main`, with fixes.
+4. A version bump in `faceid/__init__.py` and a `CHANGELOG.md` entry.
+5. `git merge --no-ff` into `main`. The merge commit message is the PR description, written with the `pr` skill and passed with `-F <file>` (`git merge` can't read the message from stdin).
+6. An annotated `vX.Y.Z` tag on the merge commit. Check `git log -1` before tagging.
+7. `git push origin main vX.Y.Z`. Push without asking.
 
 Commit with the repo-local identity (the noreply email is already set in `.git/config`). Use Conventional Commit messages.
