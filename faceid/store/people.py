@@ -82,3 +82,63 @@ def set_password(role, account_id, new_password):
             f"UPDATE {table} SET password_hash = %s, must_change_password = FALSE WHERE {id_column} = %s",
             (hash_password(new_password), account_id),
         )
+
+
+# --- Registration (F2) ---
+
+
+def list_students():
+    return db.query(
+        "SELECT student_id, enrollment_no, name, email, mobile, course, semester, section, is_active"
+        " FROM student ORDER BY is_active DESC, course, semester, enrollment_no"
+    )
+
+
+def get_student(student_id):
+    return db.query_one("SELECT * FROM student WHERE student_id = %s", (student_id,))
+
+
+def update_student(student_id, enrollment_no, name, email, mobile, course, semester, section):
+    db.execute(
+        "UPDATE student SET enrollment_no = %s, name = %s, email = %s, mobile = %s, course = %s,"
+        " semester = %s, section = %s WHERE student_id = %s",
+        (enrollment_no, name, email, mobile, course, semester, section, student_id),
+    )
+
+
+def list_faculty(active_only=False):
+    where = "WHERE is_active" if active_only else ""
+    return db.query(
+        f"SELECT faculty_id, name, email, department, is_active FROM faculty {where} ORDER BY is_active DESC, name"
+    )
+
+
+def get_faculty(faculty_id):
+    return db.query_one("SELECT * FROM faculty WHERE faculty_id = %s", (faculty_id,))
+
+
+def update_faculty(faculty_id, name, email, department, temporary_password):
+    """An empty `temporary_password` keeps the current password; otherwise it is reset and must be changed."""
+    db.execute(
+        "UPDATE faculty SET name = %s, email = %s, department = %s WHERE faculty_id = %s",
+        (name, email, department, faculty_id),
+    )
+    if temporary_password:
+        db.execute(
+            "UPDATE faculty SET password_hash = %s, must_change_password = TRUE WHERE faculty_id = %s",
+            (hash_password(temporary_password), faculty_id),
+        )
+
+
+def reset_student_password(student_id):
+    """Back to the Enrolment Number, to be changed at next login (ADR 0003)."""
+    student = get_student(student_id)
+    db.execute(
+        "UPDATE student SET password_hash = %s, must_change_password = TRUE WHERE student_id = %s",
+        (hash_password(student["enrollment_no"]), student_id),
+    )
+
+
+def set_active(role, account_id, active):
+    table, id_column = ROLE_TABLES[role]
+    db.execute(f"UPDATE {table} SET is_active = %s WHERE {id_column} = %s", (active, account_id))

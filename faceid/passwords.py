@@ -2,12 +2,13 @@
 
 import bcrypt
 
+ROUNDS = 12  # bcrypt cost; tests lower it for speed
 MIN_LENGTH = 8
 MAX_BYTES = 72  # bcrypt only reads the first 72 bytes and bcrypt 5 rejects longer input
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("ascii")
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=ROUNDS)).decode("ascii")
 
 
 def check_password(password: str, password_hash: str) -> bool:

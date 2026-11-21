@@ -1,5 +1,14 @@
 {% extends "admin/layout.html" %}
 {% block title %}Admin dashboard{% endblock %}
 {% block content %}
-<h1 class="h3">Admin dashboard</h1>
+<h1 class="h3 mb-4">Admin dashboard</h1>
+<div class="row g-3">
+  {% for endpoint, title, text in [
+      ('admin.students', 'Students', 'Register Students and manage their accounts.'),
+      ('admin.faculty', 'Faculty', 'Register Faculty members.'),
+      ('admin.subjects', 'Subjects', 'Assign Subjects to Faculty for a Programme and semester.')] %}
+  <div class="col-md-4"><a class="card card-body text-decoration-none h-100" href="{{ url_for(endpoint) }}">
+    <h2 class="h5">{{ title }}</h2><p class="mb-0 text-body-secondary">{{ text }}</p></a></div>
+  {% endfor %}
+</div>
 {% endblock %}

@@ -6,8 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from faceid import create_app
+from faceid import create_app, passwords
 from faceid.store import db
+
+passwords.ROUNDS = 4  # the minimum bcrypt allows; production keeps 12
 
 INSTANCE_CONFIG = Path(__file__).parent.parent / "instance" / "config.py"
 

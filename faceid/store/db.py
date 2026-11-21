@@ -58,6 +58,17 @@ def execute(sql, params=()):
     return new_id
 
 
+def duplicate_field(error):
+    """For a duplicate-key IntegrityError, the column that clashed (e.g. "email"); otherwise None.
+
+    MySQL reports it as: Duplicate entry 'x' for key 'student.enrollment_no'.
+    """
+    if getattr(error, "errno", None) != 1062:
+        return None
+    key = str(error.msg).rsplit("for key '", 1)[-1].rstrip("'")
+    return key.split(".")[-1]
+
+
 def drop_database(config):
     conn = _connect(config, with_database=False)
     conn.cursor().execute(f"DROP DATABASE IF EXISTS `{config['DB_NAME']}`")
