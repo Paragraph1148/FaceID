@@ -58,6 +58,7 @@ The synopsis's seven tables (`admin`, `student`, `face_encoding`, `faculty`, `su
 | `face_encoding.image_path` removed | [ADR 0002](adr/0002-no-face-images-stored.md): no face images stored |
 | `student.password_hash`, `student.must_change_password` added | [ADR 0003](adr/0003-student-password-column.md): Student login |
 | `faculty.must_change_password` added | Faculty accounts are created by the Admin with a temporary password |
+| `faculty.is_active`, `subject.is_active` added | F2.1: Faculty and Subjects are deactivated, never deleted, like Students |
 | `subject.course` added | [ADR 0006](adr/0006-subjects-belong-to-a-programme.md): Expected Students |
 | `attendance.minutes_late` added (INT NULL) | [ADR 0005](adr/0005-late-earns-partial-credit.md): partial credit |
 
