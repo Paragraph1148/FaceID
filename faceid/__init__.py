@@ -9,7 +9,7 @@ warnings.filterwarnings("ignore", message="pkg_resources is deprecated", categor
 
 from flask import Flask, render_template
 
-from faceid import cli
+from faceid import cli, settings
 from faceid.store import db
 
 
@@ -19,15 +19,16 @@ def create_app(config=None):
     app.config.from_pyfile("config.py", silent=True)
     if config:
         app.config.update(config)
+    settings.apply_defaults(app.config)
 
     app.teardown_appcontext(db.close)
     cli.register(app)
 
-    from faceid.web import admin, auth, faculty, student
+    from faceid.web import admin, auth, diagnostics, faculty, student
 
     auth.login_manager.init_app(app)
     app.jinja_env.globals["csrf_token"] = auth.csrf_token
-    for blueprint in (auth.bp, admin.bp, faculty.bp, student.bp):
+    for blueprint in (auth.bp, admin.bp, diagnostics.bp, faculty.bp, student.bp):
         app.register_blueprint(blueprint)
 
     @app.before_request

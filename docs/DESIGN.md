@@ -140,9 +140,9 @@ Backup and restore are written in Python (JSON for each table), not with `mysqld
 - **LFW pairs**: through `DlibEngine`.
 - **Classroom clip**: through `VideoFileSource` → `PresenceTracker`, so it measures the exact code that runs in class.
 
-### `faceid/config.py`: settings
+### `faceid/settings.py`: settings
 
-A single dataclass of every setting in F4.5, loaded from `instance/config.toml`. The `instance/` folder is untracked and also holds the generated secret key.
+Defaults for every setting in F4.5, overridden by `instance/config.py`. The `instance/` folder is untracked and holds the secret key and database password.
 
 ## Tests
 
