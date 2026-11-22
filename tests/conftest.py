@@ -2,6 +2,8 @@
 
 import re
 import runpy
+import time
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -42,13 +44,29 @@ def engine():
     return ScriptedEngine()
 
 
+class Clock:
+    """A clock the test sets. The app reads it for "now" (marking times, Late, the default session times)."""
+
+    def __init__(self, now):
+        self.now = now
+
+    def __call__(self):
+        return self.now
+
+
 @pytest.fixture
-def app(test_config, engine):
-    """An app on a freshly upgraded, empty database, with a still camera and the scripted face engine."""
+def clock():
+    return Clock(datetime(2026, 12, 1, 10, 0))
+
+
+@pytest.fixture
+def app(test_config, engine, clock):
+    """An app on a freshly upgraded, empty database, with a still camera, the scripted face engine and a set clock."""
     db.drop_database(test_config)
     db.upgrade(test_config)
-    app = create_app({**test_config, "FACE_ENGINE": engine, "CAMERA_SOURCE": StillCamera})
+    app = create_app({**test_config, "FACE_ENGINE": engine, "CAMERA_SOURCE": StillCamera, "CLOCK": clock})
     yield app
+    app.extensions["live"].stop()
     app.extensions["camera_feed"].stop()
 
 
@@ -86,3 +104,13 @@ def admin_client(app, client):
     email, password = create_admin(app)
     login(client, email, password)
     return client
+
+
+def wait_until(condition, timeout=5.0):
+    """Poll `condition` until it is true, for things done by background threads. Fails after `timeout` seconds."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if condition():
+            return
+        time.sleep(0.02)
+    raise AssertionError(f"still false after {timeout} s: {condition}")

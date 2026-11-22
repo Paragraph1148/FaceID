@@ -1,0 +1,31 @@
+{% extends "faculty/layout.html" %}
+{% from "macros.html" import field, csrf %}
+{% block title %}Start a Class Session{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Start a Class Session</h1>
+{% if not subjects %}
+<div class="alert alert-warning">No active Subjects are assigned to you. Ask the Admin to assign one.</div>
+{% else %}
+<form method="post" class="card card-body" style="max-width: 40rem">
+  {{ csrf() }}
+  <p class="text-body-secondary">Today, {{ today.strftime('%d %b %Y') }}. Starting the session turns the camera on and marks
+    Students as they are recognised. Students recognised more than {{ config.LATE_THRESHOLD_MINUTES }} minutes after
+    the start time are marked late.</p>
+  <div class="mb-3">
+    <label class="form-label" for="subject_id">Subject *</label>
+    <select class="form-select{% if errors.get('subject_id') %} is-invalid{% endif %}" id="subject_id" name="subject_id" required>
+      {% for s in subjects %}
+      <option value="{{ s.subject_id }}" {% if values.get('subject_id')|string == s.subject_id|string %}selected{% endif %}>
+        {{ s.subject_code }} {{ s.subject_name }} ({{ s.course }} semester {{ s.semester }})</option>
+      {% endfor %}
+    </select>
+    {% if errors.get('subject_id') %}<div class="invalid-feedback">{{ errors.subject_id }}</div>{% endif %}
+  </div>
+  {{ field('start_time', 'Start time', values, errors, type='time', required=true) }}
+  {{ field('end_time', 'End time', values, errors, type='time', required=true) }}
+  {{ field('room_no', 'Room', values, errors) }}
+  <div><button class="btn btn-primary">Start</button>
+  <a class="btn btn-link" href="{{ url_for('faculty.dashboard') }}">Cancel</a></div>
+</form>
+{% endif %}
+{% endblock %}

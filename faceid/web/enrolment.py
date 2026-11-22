@@ -86,6 +86,7 @@ def save(student_id):
         return _back(student_id)
     people.replace_encodings(student_id, result)
     current_app.extensions["enrolment_drafts"].discard(_owner(), student_id)
+    current_app.extensions["live"].enrolment_changed()  # an open Class Session recognises the new face (F4.6)
     flash(f"Face Enrolment saved for {request.student['name']}.", "success")
     return redirect(url_for("admin.students"))
 

@@ -28,29 +28,30 @@ All code lives in the `faceid/` package.
 
 The interface is three functions:
 
-- `status_for(recognised_at, session, late_threshold) -> (status, minutes_late)`: returns Present or Late, and the minutes late.
-- `credit(record, session) -> float`: the Attendance Credit for one record (ADR 0005).
-- `percentage(records, held_sessions) -> float`: the Attendance Percentage.
+- `status_for(recognised_at, starts_at, late_threshold_minutes) -> (status, minutes_late)`: returns Present or Late, and the minutes late.
+- `credit(status, minutes_late, session_minutes) -> float`: the Attendance Credit for one record (ADR 0005).
+- `percentage(credits, held_sessions) -> float | None`: the Attendance Percentage (None when no session was held).
 
-These hold every rule from F5.3 and F5.7. Reports, live marking and Manual Override all call them, so a rule is never re-implemented elsewhere.
+These hold every rule from F5.3 and F5.7. Reports, live marking and Manual Override all call them, so a rule is never re-implemented elsewhere. The module also holds the form rules for starting a Class Session and for Manual Override (`clean_class_session`, `clean_override`).
 
 ### `faceid/presence.py`: who is present in this frame (pure)
 
 This is the deepest module, holding the recognition logic behind O2 and O4.
 
 ```python
-tracker = PresenceTracker(gallery, settings)  # gallery: {student_id: [encodings]}
+tracker = PresenceTracker(gallery, rules, already_marked)  # gallery: {student_id: [encodings]}
 result = tracker.observe(faces, encode)       # faces: list[DetectedFace] (box + eye landmarks) from vision
                                               # encode: callable(face) -> 128-d encoding, called only when needed
 result.annotations       # box, label, state for each face: unknown / waiting-for-blink / marked
 result.newly_confirmed   # [(student_id, face_distance)] that just met F4.3
+tracker.replace_gallery(gallery)  # Face Enrolment changed during the session (F4.6)
 ```
 
 Inside it:
-- Following each face from frame to frame by box overlap. A face is encoded only while it isn't yet identified. Encoding costs about 0.1 s per face, so encoding every face in every frame would drop 10 faces to about 1 frame per second, as the spike showed.
+- Following each face from frame to frame by box overlap (intersection over union ≥ 0.3; a face undetected for more than 5 frames is forgotten). A face is encoded only while it isn't yet identified, and an Unknown face only every 10th frame. Encoding costs about 0.1 s per face, so encoding every face in every frame would drop 10 faces to about 1 frame per second, as the spike showed.
 - Nearest-encoding matching within the Tolerance.
 - The count of consecutive matching frames per Student.
-- The Eye Aspect Ratio history and the Blink state machine per Student.
+- The Eye Aspect Ratio and the Blink state machine per followed face. A Blink counts only while the face matches the Student, and the face is encoded once more when it blinks, before the Student is confirmed.
 - Remembering who is already confirmed, so a Student is confirmed only once.
 
 It has no clock, no IO and no dlib. Tests feed it scripted `DetectedFace` lists frame by frame, for example "matches Asha for 2 frames, then blinks, then matches 1 more frame", and check exactly when she is confirmed.
@@ -93,19 +94,23 @@ class FrameSource(Protocol):
 ```
 
 - **`WebcamSource`**: OpenCV, using `CAP_DSHOW` on Windows and `CAP_V4L2` on Linux.
-- **`VideoFileSource`**: plays a recorded clip. The classroom evaluation (§7.2) and end-to-end tests use it, so the same pipeline runs without a webcam.
+- **`VideoFileSource`**: plays a recorded clip at its own speed. The classroom evaluation (§7.2) and the adapter tests use it, so the same pipeline runs without a webcam.
+- **`StillCamera`** (`tests/fakes.py`), for web tests: a black frame.
 
 ### `faceid/live.py`: the running Class Session
 
 ```python
-live = LiveSession(source, engine, store, settings)
-live.start(session_id)    # loads gallery of Expected Students, starts threads (F4.6)
-live.latest_jpeg()        # annotated frame for the MJPEG stream
-live.status()             # marked / expected counts, per-student states
-live.stop()
+live = LiveSession(feed, engine, store, rules, late_threshold_minutes, clock)
+live.ensure_running(session_id)  # loads the Expected Students' encodings, starts recognition (F4.6)
+live.faces                       # latest boxes, states and labels, for the live view
+live.report(session_id)          # recognising?, fps and any error, for the session page
+live.enrolment_changed()         # reload encodings before the next frame
+live.stop() / live.stop_if(session_id)
 ```
 
-One capture thread keeps the latest frame. One recognition thread does three things in a loop: `engine.detect` → `tracker.observe` (which calls `engine.encode` only for unidentified faces) → for each newly confirmed Student, `attendance.status_for` and `store.mark`. This is the only module with threads, and the server holds one `LiveSession` because there is one camera (ADR 0004).
+The camera feed's thread keeps the latest frame. The recognition thread takes each *new* frame (`feed.next_frame`, so no frame counts twice towards the Confirmation Frames) through `engine.detect` → `tracker.observe` (which calls `engine.encode` only for unidentified faces) → for each newly confirmed Student, `attendance.status_for` and `store.mark`. The live view (`preview.mjpeg_live`) draws the latest `live.faces` on the latest frame, so it runs at up to 25 frames per second even when recognition is slower. A failed database write is logged and the Student is confirmed and saved again on a later frame. Stopping cancels the wait for the next frame, and a stopped thread never publishes its results.
+
+`store` is a `LiveStore`: `faceid/store/live.py` adapts the MySQL store, opening an application context per call because recognition runs outside any web request. The server holds one `LiveSession` because there is one camera (ADR 0004).
 
 ### `faceid/store/`: MySQL persistence
 
@@ -116,7 +121,8 @@ Plain SQL through mysql-connector-python, with no ORM, so the queries match the 
 | `db.py` | Connection, transactions, migrations runner |
 | `people.py` | Admin, Faculty, Student and Face Encoding rows |
 | `teaching.py` | Subjects and Class Sessions |
-| `attendance.py` | Opening (creating absent records), marking, Manual Override, closing |
+| `attendance.py` | Opening (creating absent records), marking, Manual Override, closing and cancelling |
+| `live.py` | The `LiveStore` adapter for live recognition |
 | `queries.py` | Read-only report queries |
 
 The store is tested against a real MySQL 8.0.46 in a podman container, never a fake. There is only one adapter, so a fake would test nothing real.
@@ -138,11 +144,11 @@ There is one `Table` shape and three renderers, so all formats contain the same 
 
 ### `faceid/feed.py`: one shared camera
 
-`CameraFeed.latest_frame()` opens the camera on first use, keeps the newest frame from a background thread, and releases the camera after 15 s without requests. The app holds one in `app.extensions["camera_feed"]`. Tests pass `CAMERA_SOURCE` to use a still camera. `LiveSession` will read from it too.
+`CameraFeed.latest_frame()` opens the camera on first use, keeps the newest frame from a background thread, and releases the camera after 15 s without requests. `next_frame(after)` waits for a frame newer than the one given, for live recognition. The app holds one in `app.extensions["camera_feed"]`. Tests pass `CAMERA_SOURCE` to use a still camera.
 
 ### `faceid/preview.py`: live preview
 
-`mjpeg_preview(feed, engine, rules)` streams annotated frames (face boxes with width and sharpness), at most 15 per second, to the diagnostics and enrolment pages.
+`mjpeg_preview(feed, engine, rules)` streams annotated frames (face boxes with width and sharpness), at most 15 per second, to the diagnostics and enrolment pages. `mjpeg_live(feed, live, session_id)` streams an open Class Session's camera with live recognition's boxes and names.
 
 ### `faceid/web/`: Flask (thin)
 
@@ -170,6 +176,6 @@ Defaults for every setting in F4.5, overridden by `instance/config.py`. The `ins
 | Kind | What | Where it runs |
 |---|---|---|
 | Unit | `attendance`, `presence`, `enrolment`, `reports.render` through their interfaces | anywhere, instant |
-| Integration | `store`, web views (Flask test client) against real MySQL | Linux, podman MySQL |
-| Adapter | `DlibEngine` on public-domain sample faces, `VideoFileSource` on a tiny clip | Linux |
+| Integration | `store`, web views (Flask test client) against real MySQL; Class Sessions also run the real recognition thread with the scripted engine | Linux, podman MySQL |
+| Adapter | `DlibEngine` on public-domain sample faces; `VideoFileSource` → `DlibEngine` → `PresenceTracker` on a clip made from them at test time | Linux |
 | Manual | `docs/windows-checklist.md` | demo laptop, each release |
