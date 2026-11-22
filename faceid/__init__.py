@@ -1,6 +1,6 @@
 """FaceID: face-recognition attendance system."""
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 import warnings
 
@@ -20,6 +20,7 @@ from faceid.enrolment import DraftStore
 from faceid.feed import CameraFeed
 from faceid.live import LiveSession
 from faceid.presence import PresenceRules
+from faceid.store.live import AppLiveStore
 from faceid.vision import DlibEngine
 from faceid.store import db
 
@@ -85,12 +86,11 @@ def _attach_camera_and_engine(app: Flask) -> None:
     )
     app.extensions["enrolment_drafts"] = DraftStore()  # in memory only (ADR 0002)
 
-    from faceid.store.live import AppLiveStore
-
+    app.extensions["clock"] = config.get("CLOCK") or datetime.now  # tests set the time
     rules = PresenceRules(config["TOLERANCE"], config["CONFIRMATION_FRAMES"], config["EAR_THRESHOLD"], config["BLINK_FRAMES"])
     app.extensions["live"] = LiveSession(
         app.extensions["camera_feed"], app.extensions["face_engine"], AppLiveStore(app), rules,
-        config["LATE_THRESHOLD_MINUTES"], clock=config.get("CLOCK") or datetime.now,
+        config["LATE_THRESHOLD_MINUTES"], clock=app.extensions["clock"],
     )
     if not app.testing:
         # Stop recognition, then release the webcam; threads still running at interpreter shutdown can crash it.

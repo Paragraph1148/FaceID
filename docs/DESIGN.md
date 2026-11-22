@@ -51,7 +51,7 @@ Inside it:
 - Following each face from frame to frame by box overlap (intersection over union ≥ 0.3; a face undetected for more than 5 frames is forgotten). A face is encoded only while it isn't yet identified, and an Unknown face only every 10th frame. Encoding costs about 0.1 s per face, so encoding every face in every frame would drop 10 faces to about 1 frame per second, as the spike showed.
 - Nearest-encoding matching within the Tolerance.
 - The count of consecutive matching frames per Student.
-- The Eye Aspect Ratio history and the Blink state machine per Student.
+- The Eye Aspect Ratio and the Blink state machine per followed face. A Blink counts only while the face matches the Student, and the face is encoded once more when it blinks, before the Student is confirmed.
 - Remembering who is already confirmed, so a Student is confirmed only once.
 
 It has no clock, no IO and no dlib. Tests feed it scripted `DetectedFace` lists frame by frame, for example "matches Asha for 2 frames, then blinks, then matches 1 more frame", and check exactly when she is confirmed.
@@ -103,12 +103,12 @@ class FrameSource(Protocol):
 live = LiveSession(feed, engine, store, rules, late_threshold_minutes, clock)
 live.ensure_running(session_id)  # loads the Expected Students' encodings, starts recognition (F4.6)
 live.faces                       # latest boxes, states and labels, for the live view
-live.fps, live.error             # for the session page
+live.report(session_id)          # recognising?, fps and any error, for the session page
 live.enrolment_changed()         # reload encodings before the next frame
-live.stop()
+live.stop() / live.stop_if(session_id)
 ```
 
-The camera feed's thread keeps the latest frame. The recognition thread takes each *new* frame (`feed.next_frame`, so no frame counts twice towards the Confirmation Frames) through `engine.detect` → `tracker.observe` (which calls `engine.encode` only for unidentified faces) → for each newly confirmed Student, `attendance.status_for` and `store.mark`. The live view (`preview.mjpeg_live`) draws the latest `live.faces` on the latest frame, so it runs at up to 25 frames per second even when recognition is slower.
+The camera feed's thread keeps the latest frame. The recognition thread takes each *new* frame (`feed.next_frame`, so no frame counts twice towards the Confirmation Frames) through `engine.detect` → `tracker.observe` (which calls `engine.encode` only for unidentified faces) → for each newly confirmed Student, `attendance.status_for` and `store.mark`. The live view (`preview.mjpeg_live`) draws the latest `live.faces` on the latest frame, so it runs at up to 25 frames per second even when recognition is slower. A failed database write is logged and the Student is confirmed and saved again on a later frame. Stopping cancels the wait for the next frame, and a stopped thread never publishes its results.
 
 `store` is a `LiveStore`: `faceid/store/live.py` adapts the MySQL store, opening an application context per call because recognition runs outside any web request. The server holds one `LiveSession` because there is one camera (ADR 0004).
 

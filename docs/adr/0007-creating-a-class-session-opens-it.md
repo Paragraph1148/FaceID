@@ -14,4 +14,4 @@ The synopsis's `class_session.status` has only `open`, `closed` and `cancelled`,
 ## Consequences
 
 - There is no timetable. Each Class Session is created on the day.
-- If the server restarts while a session is open, the session stays open in the database and recognition resumes when the Faculty opens its page.
+- If the server restarts while a session is open, the session stays open in the database and recognition resumes when the Faculty opens its page, on the same day. A session left open from an earlier day is never resumed, because everyone would be marked hours late; the page asks the Faculty to close it.

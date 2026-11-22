@@ -81,6 +81,6 @@ def list_class_sessions(faculty_id: int) -> list[dict]:
     return [_with_times(row) for row in rows]
 
 
-def the_open_class_session() -> dict | None:
+def find_open_class_session() -> dict | None:
     """The server's one open Class Session (F5.2), if any."""
     return _with_times(db.query_one(f"{_SESSION_SELECT} WHERE c.status = 'open' ORDER BY c.session_id LIMIT 1"))

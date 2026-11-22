@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import mysql.connector
+from mysql.connector.constants import ClientFlag
 from flask import current_app, g
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
@@ -20,6 +21,8 @@ def _connect(config, with_database: bool = True):
         password=config["DB_PASSWORD"],
         database=config["DB_NAME"] if with_database else None,
         autocommit=False,
+        # UPDATE row counts mean "rows matched", so an update that changes nothing still counts as found.
+        client_flags=[ClientFlag.FOUND_ROWS],
     )
 
 
@@ -50,13 +53,23 @@ def query_one(sql: str, params: tuple = ()) -> dict | None:
 
 def execute(sql: str, params: tuple = ()) -> int:
     """Run one statement and commit. Returns the new row id for INSERTs."""
+    return _run(sql, params)[0]
+
+
+def update(sql: str, params: tuple = ()) -> int:
+    """Run one UPDATE and commit. Returns the number of rows it matched."""
+    return _run(sql, params)[1]
+
+
+def _run(sql: str, params: tuple) -> tuple[int, int]:
     conn = connection()
     cursor = conn.cursor()
-    cursor.execute(sql, params)
-    conn.commit()
-    new_id = cursor.lastrowid
-    cursor.close()
-    return new_id
+    try:
+        cursor.execute(sql, params)
+        conn.commit()
+        return cursor.lastrowid, cursor.rowcount
+    finally:
+        cursor.close()
 
 
 def duplicate_field(error: Exception) -> str | None:

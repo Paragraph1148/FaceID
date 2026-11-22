@@ -176,3 +176,53 @@ def test_a_student_enrolled_during_the_session_is_recognised_at_once():
     confirmed, annotations = play(tracker, encoder, [[at(100), ], [at(100, CLOSED)], [at(100)], [at(100)]])
 
     assert [who for who, _ in confirmed] == [RAVI]
+
+
+# --- Review fixes: the Blink and the identity must come from the same face ---
+
+
+def test_a_blink_by_someone_else_before_the_face_was_identified_does_not_count():
+    # A stranger blinks, then a photo of Asha is held where their face was.
+    tracker = PresenceTracker(GALLERY, RULES)
+    encoder = Encoder({100: encoding(9)})
+    play(tracker, encoder, [[at(100)], [at(100, CLOSED)], [at(100)]])
+
+    encoder.people = {100: encoding(1)}
+    confirmed, annotations = play(tracker, encoder, [[at(100)]] * 12)  # re-checked at frame 13, identified by 15
+
+    assert confirmed == []
+    assert annotations[0].state == "waiting"
+
+
+def test_a_live_face_blinking_where_an_identified_photo_was_does_not_mark_the_photo():
+    tracker = PresenceTracker(GALLERY, RULES)
+    encoder = Encoder({100: encoding(1)})
+    play(tracker, encoder, [[at(100)]] * 3)  # a photo of Asha, identified
+
+    encoder.people = {100: encoding(9)}      # a stranger moves into the same place and blinks
+    confirmed, _ = play(tracker, encoder, [[at(100, CLOSED)], [at(100)], [at(100)]])
+
+    assert confirmed == []
+
+
+def test_the_face_is_checked_once_more_when_it_blinks_before_confirming():
+    tracker = PresenceTracker(GALLERY, RULES)
+    encoder = Encoder({100: encoding(1)})
+    play(tracker, encoder, [[at(100)]] * 3)
+
+    confirmed, _ = play(tracker, encoder, [[at(100, CLOSED)], [at(100)]])
+
+    assert [who for who, _ in confirmed] == [ASHA]
+    assert encoder.calls == 4
+
+
+def test_a_confirmation_that_could_not_be_saved_is_retried():
+    tracker = PresenceTracker(GALLERY, RULES)
+    encoder = Encoder({100: encoding(1)})
+    confirmed, _ = play(tracker, encoder, [[at(100)], [at(100, CLOSED)], [at(100)]])
+    assert [who for who, _ in confirmed] == [ASHA]
+
+    tracker.unconfirm(ASHA)  # e.g. the database write failed
+    confirmed, _ = play(tracker, encoder, [[at(100)]])
+
+    assert [who for who, _ in confirmed] == [ASHA]

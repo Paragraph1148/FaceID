@@ -12,12 +12,12 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Class Sessions: a Faculty member starts a Class Session for one of their Subjects, which opens it with an absent Attendance Record for each Expected Student and turns the camera on. Only one Class Session can be open at a time.
-- Live recognition: each face is followed from frame to frame and encoded only until it is identified. A Student is marked once their face has matched in 3 consecutive frames and blinked. The live view colours each face red (unknown), amber (waiting for a blink) or green (marked), beside a running "marked / expected" count.
+- Live recognition: each face is followed from frame to frame and encoded only until it is identified. A Student is marked once their face has matched in 3 consecutive frames and blinked while matching; the face is checked once more at the blink, so swapping a photo and a live face can't mark anyone. The live view colours each face red (unknown), amber (waiting for a blink) or green (marked), beside a running "marked / expected" count.
 - Students recognised more than 10 minutes after the start time are marked Late, with the minutes late. Attendance Credit and Attendance Percentage rules for reports, with partial credit for Late (ADR 0005).
-- Closing a session leaves unmarked Students absent. Cancelling it removes it from everyone's attendance.
+- Closing a session leaves unmarked Students absent. Cancelling an open session removes it from everyone's attendance.
 - Manual Override of any record in an open or closed session, including Late with minutes. The camera never changes a record set by hand.
 - Students enrolled during an open session are recognised without restarting it. The session page lists Expected Students who aren't enrolled.
-- Opening an open session's page after a server restart resumes recognition.
+- Opening an open session's page after a server restart resumes recognition, on the same day only. A mark that fails to save is retried.
 - `VideoFileSource` plays a recorded clip in place of the webcam, for tests and the classroom evaluation.
 - Settings for Confirmation Frames, the Eye Aspect Ratio threshold, the Blink frame count and the Late Threshold.
 

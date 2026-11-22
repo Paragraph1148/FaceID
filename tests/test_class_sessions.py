@@ -252,3 +252,27 @@ def test_the_start_form_offers_the_faculty_members_subjects_and_the_current_time
 
     assert "CA261481 Machine Learning" in page and "CA261482" not in page
     assert 'value="10:00"' in page and 'value="11:00"' in page
+
+
+
+# --- Review fixes ---
+
+
+def test_a_closed_class_session_cannot_be_cancelled(faculty_client, classroom):
+    start(faculty_client, classroom["ml"])
+    post(faculty_client, "/faculty/sessions/1/close")
+
+    page = post(faculty_client, "/faculty/sessions/1/cancel").get_data(as_text=True)
+
+    assert "Only an open Class Session can be cancelled." in page
+    assert status(faculty_client)["status"] == "closed"
+
+
+def test_the_same_manual_override_can_be_saved_twice(faculty_client, classroom):
+    start(faculty_client, classroom["ml"])
+    url = f"/faculty/sessions/1/records/{classroom['asha']}"
+
+    post(faculty_client, url, {"status": "present"})
+    page = post(faculty_client, url, {"status": "present"})
+
+    assert "Attendance Record updated by Manual Override." in page.get_data(as_text=True)

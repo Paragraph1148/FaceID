@@ -3,7 +3,9 @@
 The PresenceTracker is fed one frame's detected faces at a time. It follows each face from frame to
 frame by how much its box overlaps the previous one, so a face is encoded (about 0.1 s) only while it
 is still being identified. A Student is confirmed when one followed face has matched them in the
-Confirmation Frames number of consecutive frames, and a Blink has been seen on their face.
+Confirmation Frames number of consecutive frames and has blinked while matching them. The face is
+encoded once more when it blinks, so a photo identified first and a live person blinking in its place
+(or the reverse) never add up to a confirmation.
 
 No clock, no camera, no dlib: the caller passes faces in and gets annotations and confirmations out.
 """
@@ -73,7 +75,7 @@ class _Track:
     last_encoded: int = -1         # frame number of the last encoding
     distance: float = 0.0          # Face Distance of the latest match
     closed_frames: int = 0         # consecutive frames with eyes closed
-    blinked: bool = False
+    blinked: bool = False          # blinked while matching `candidate`
     missed: int = 0                # consecutive frames not detected
 
     def is_unknown(self, rules: PresenceRules) -> bool:
@@ -88,7 +90,6 @@ class PresenceTracker:
 
     def __post_init__(self):
         self._confirmed = set(self.already_marked)
-        self._blinked: set[int] = set()  # Students seen blinking during the session
         self._tracks: list[_Track] = []
         self._frame = 0
 
@@ -107,16 +108,22 @@ class PresenceTracker:
         annotations = []
         for face, track in seen:
             self._update_blink(track, face)
-            if not track.identified and self._due_for_encoding(track):
+            encoded_now = not track.identified and self._due_for_encoding(track)
+            if encoded_now:
                 self._identify(track, encode(face))
-            if track.identified:
-                if track.blinked:
-                    self._blinked.add(track.candidate)
-                if track.candidate in self._blinked and track.candidate not in self._confirmed:
+            if track.identified and track.blinked and track.candidate not in self._confirmed:
+                if not encoded_now:
+                    # Check that the face that blinked is still the Student identified earlier.
+                    self._identify(track, encode(face))
+                if track.identified:
                     self._confirmed.add(track.candidate)
                     newly_confirmed.append((track.candidate, track.distance))
             annotations.append(Annotation(track.box, track.candidate, self._state(track)))
         return Observation(annotations, newly_confirmed)
+
+    def unconfirm(self, student_id: int) -> None:
+        """Forget a confirmation that couldn't be saved, so the Student is confirmed again on a later frame."""
+        self._confirmed.discard(student_id)
 
     def _follow(self, faces: list[DetectedFace]) -> list[tuple[DetectedFace, _Track]]:
         """Pair each face with last frame's most-overlapping track, or a new one. Unseen tracks age and are dropped."""
@@ -166,11 +173,13 @@ class PresenceTracker:
         track.last_encoded = self._frame
         match = nearest(encoding, self.gallery)
         if match is None or match.distance > self.rules.tolerance:
-            track.candidate, track.streak = None, 0
+            track.candidate, track.streak, track.identified, track.blinked = None, 0, False, False
             track.non_matches += 1
             return
         track.non_matches = 0
-        track.streak = track.streak + 1 if match.who == track.candidate else 1
+        if match.who != track.candidate:
+            track.streak, track.blinked = 0, False  # a blink counts only for the Student it was matching
+        track.streak += 1
         track.candidate, track.distance = match.who, match.distance
         track.identified = track.streak >= self.rules.confirmation_frames
 

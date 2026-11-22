@@ -32,6 +32,13 @@ def percentage(credits: list[float], held_sessions: int) -> float | None:
     return sum(credits) / held_sessions * 100
 
 
+def suggested_times(now: datetime) -> tuple[time, time]:
+    """Default start and end for a new Class Session: now, and an hour later."""
+    start = now.replace(second=0, microsecond=0)
+    end = min(start + timedelta(hours=1), start.replace(hour=23, minute=59))  # a Class Session ends on its own day
+    return start.time(), end.time()
+
+
 def minutes_between(start: time, end: time) -> int:
     return (end.hour * 60 + end.minute) - (start.hour * 60 + start.minute)
 

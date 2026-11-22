@@ -1,11 +1,15 @@
-"""Faculty pages (SPEC F4, F5): Class Sessions, the live camera, closing and Manual Override."""
+"""Faculty pages (SPEC F4, F5): Class Sessions, the live camera, closing and Manual Override.
 
-from datetime import datetime, timedelta
+`class_session` is a Class Session row; Flask's `session` (the login) is a different thing.
+"""
+
+from datetime import datetime
 
 from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
 
-from faceid.attendance import clean_class_session, clean_override
+from faceid.attendance import STATUSES, clean_class_session, clean_override, suggested_times
+from faceid.live import LiveSession
 from faceid.preview import mjpeg_live
 from faceid.store import attendance, teaching
 from faceid.store.attendance import CannotOpen
@@ -15,25 +19,23 @@ bp = Blueprint("faculty", __name__, url_prefix="/faculty")
 
 
 def _now() -> datetime:
-    clock = current_app.config.get("CLOCK") or datetime.now
-    return clock()
+    return current_app.extensions["clock"]()
 
 
-def _own_session(session_id: int) -> dict:
-    """The Class Session, if it belongs to the logged-in Faculty member; otherwise 404."""
-    session = teaching.get_class_session(session_id)
-    if session is None or session["faculty_id"] != current_user.account_id:
-        abort(404)
-    return session
-
-
-def _live():
+def _live() -> LiveSession:
     return current_app.extensions["live"]
 
 
-def _stop_recognising(session_id: int) -> None:
-    if _live().session_id == session_id:
-        _live().stop()
+def _own_class_session(session_id: int) -> dict:
+    """The Class Session, if it belongs to the logged-in Faculty member; otherwise 404."""
+    class_session = teaching.get_class_session(session_id)
+    if class_session is None or class_session["faculty_id"] != current_user.account_id:
+        abort(404)
+    return class_session
+
+
+def _back(session_id: int, anchor: str = ""):
+    return redirect(url_for("faculty.session_page", session_id=session_id) + anchor)
 
 
 @bp.route("/")
@@ -41,8 +43,8 @@ def _stop_recognising(session_id: int) -> None:
 def dashboard():
     return render_template(
         "faculty/dashboard.html",
-        sessions=teaching.list_class_sessions(current_user.account_id),
-        open_session=teaching.the_open_class_session(),
+        class_sessions=teaching.list_class_sessions(current_user.account_id),
+        open_session=teaching.find_open_class_session(),
     )
 
 
@@ -50,35 +52,36 @@ def dashboard():
 @role_required("faculty")
 def new_session():
     subjects = teaching.subjects_taught_by(current_user.account_id)
-    now = _now()
-    values, errors = {"start_time": now.strftime("%H:%M"), "end_time": (now + timedelta(hours=1)).strftime("%H:%M")}, {}
+    start, end = suggested_times(_now())
+    values, errors = {"start_time": start.strftime("%H:%M"), "end_time": end.strftime("%H:%M")}, {}
     if request.method == "POST":
-        values, errors = clean_class_session(request.form, {s["subject_id"] for s in subjects}, now.date())
+        cleaned, errors = clean_class_session(request.form, {s["subject_id"] for s in subjects}, _now().date())
         if not errors:
             try:
-                session_id = attendance.open_class_session(current_user.account_id, **values)
+                session_id = attendance.open_class_session(current_user.account_id, **cleaned)
             except CannotOpen as reason:
                 flash(str(reason), "danger")
             else:
-                return redirect(url_for("faculty.session_page", session_id=session_id))
-        values = {**values, **{k: request.form.get(k, "") for k in ("start_time", "end_time", "room_no")}}
-    return render_template("faculty/session_form.html", subjects=subjects, values=values, errors=errors, today=now.date())
+                return _back(session_id)
+        values = request.form
+    return render_template("faculty/session_form.html", subjects=subjects, values=values, errors=errors, today=_now().date())
 
 
 @bp.route("/sessions/<int:session_id>")
 @role_required("faculty")
 def session_page(session_id):
-    session = _own_session(session_id)
-    if session["status"] == "open":
+    class_session = _own_class_session(session_id)
+    if class_session["status"] == "open":
         _live().ensure_running(session_id)  # also resumes recognition after a server restart (ADR 0007)
-    return render_template("faculty/session.html", session=session, records=attendance.records(session_id))
+    return render_template(
+        "faculty/session.html", class_session=class_session, records=attendance.records(session_id), statuses=STATUSES
+    )
 
 
 @bp.route("/sessions/<int:session_id>/stream")
 @role_required("faculty")
 def session_stream(session_id):
-    session = _own_session(session_id)
-    if session["status"] != "open":
+    if _own_class_session(session_id)["status"] != "open":
         abort(404)
     frames = mjpeg_live(current_app.extensions["camera_feed"], _live(), session_id)
     return Response(frames, mimetype="multipart/x-mixed-replace; boundary=frame")
@@ -87,58 +90,51 @@ def session_stream(session_id):
 @bp.route("/sessions/<int:session_id>/status")
 @role_required("faculty")
 def session_status(session_id):
-    """What the open session's page refreshes every two seconds (F4.4)."""
-    session = _own_session(session_id)
-    live = _live()
-    running = live.session_id == session_id
-    marked = sorted(
-        (r for r in attendance.records(session_id) if r["status"] != "absent"), key=lambda r: r["marked_at"], reverse=True
-    )
+    """What the open Class Session's page refreshes every two seconds (F4.4)."""
+    class_session = _own_class_session(session_id)
     return jsonify(
-        status=session["status"],
-        attended=session["attended"],
-        expected=session["expected"],
-        recognising=running,
-        fps=round(live.fps, 1) if running else None,
-        error=live.error if running else None,
-        marked=[{"name": r["name"], "status": r["status"], "minutes_late": r["minutes_late"]} for r in marked],
+        status=class_session["status"],
+        attended=class_session["attended"],
+        expected=class_session["expected"],
+        marked=attendance.recently_marked(session_id),
+        **_live().report(session_id),
     )
 
 
 @bp.route("/sessions/<int:session_id>/close", methods=["POST"])
 @role_required("faculty")
 def close_session(session_id):
-    session = _own_session(session_id)
-    if session["status"] == "open":
-        _stop_recognising(session_id)
-        attendance.close(session_id)
+    _own_class_session(session_id)
+    _live().stop_if(session_id)
+    if attendance.close(session_id):
         flash("Class Session closed. Students not marked are absent.", "success")
-    return redirect(url_for("faculty.session_page", session_id=session_id))
+    return _back(session_id)
 
 
 @bp.route("/sessions/<int:session_id>/cancel", methods=["POST"])
 @role_required("faculty")
 def cancel_session(session_id):
-    session = _own_session(session_id)
-    if session["status"] != "cancelled":
-        _stop_recognising(session_id)
-        attendance.cancel(session_id)
+    _own_class_session(session_id)
+    if attendance.cancel(session_id):
+        _live().stop_if(session_id)
         flash("Class Session cancelled. It counts towards nobody's attendance.", "secondary")
-    return redirect(url_for("faculty.session_page", session_id=session_id))
+    else:
+        flash("Only an open Class Session can be cancelled.", "danger")
+    return _back(session_id)
 
 
 @bp.route("/sessions/<int:session_id>/records/<int:student_id>", methods=["POST"])
 @role_required("faculty")
 def override_record(session_id, student_id):
-    session = _own_session(session_id)
-    if session["status"] == "cancelled":
+    class_session = _own_class_session(session_id)
+    if class_session["status"] == "cancelled":
         flash("A cancelled Class Session's records can't be changed.", "danger")
-        return redirect(url_for("faculty.session_page", session_id=session_id))
-    change, problem = clean_override(request.form, session["session_minutes"])
+        return _back(session_id)
+    change, problem = clean_override(request.form, class_session["session_minutes"])
     if problem:
         flash(problem, "danger")
-    elif not attendance.override(session_id, student_id, *change, at=_now()):
-        abort(404)
-    else:
+    elif attendance.override(session_id, student_id, *change, at=_now()):
         flash("Attendance Record updated by Manual Override.", "success")
-    return redirect(url_for("faculty.session_page", session_id=session_id) + "#records")
+    else:
+        abort(404)
+    return _back(session_id, "#records")

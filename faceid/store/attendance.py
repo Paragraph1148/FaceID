@@ -62,40 +62,42 @@ def mark_recognised(
 ) -> bool:
     """Record a recognition (F5.3). Only an absent, face-method record in an open session changes:
     the first recognition wins, and a Manual Override is never undone by the camera."""
-    conn = db.connection()
-    cursor = conn.cursor()
-    cursor.execute(
+    return db.update(
         "UPDATE attendance a JOIN class_session c ON c.session_id = a.session_id"
         " SET a.status = %s, a.minutes_late = %s, a.confidence = %s, a.marked_at = %s"
         " WHERE a.session_id = %s AND a.student_id = %s AND a.status = 'absent' AND a.method = 'face' AND c.status = 'open'",
         (status, minutes_late, confidence, marked_at, session_id, student_id),
-    )
-    conn.commit()
-    changed = cursor.rowcount == 1
-    cursor.close()
-    return changed
+    ) == 1
 
 
 def override(session_id: int, student_id: int, status: str, minutes_late: int | None, at: datetime) -> bool:
-    """Manual Override (F5.6). False if the Student has no record in this session."""
-    if db.query_one("SELECT 1 AS found FROM attendance WHERE session_id = %s AND student_id = %s", (session_id, student_id)) is None:
-        return False
-    db.execute(
-        "UPDATE attendance SET status = %s, minutes_late = %s, method = 'manual', confidence = NULL, marked_at = %s"
-        " WHERE session_id = %s AND student_id = %s",
+    """Manual Override (F5.6) in an open or closed session. False if there is no such record, or the session was cancelled."""
+    return db.update(
+        "UPDATE attendance a JOIN class_session c ON c.session_id = a.session_id"
+        " SET a.status = %s, a.minutes_late = %s, a.method = 'manual', a.confidence = NULL, a.marked_at = %s"
+        " WHERE a.session_id = %s AND a.student_id = %s AND c.status <> 'cancelled'",
         (status, minutes_late, at, session_id, student_id),
+    ) == 1
+
+
+def close(session_id: int) -> bool:
+    """F5.4: the remaining absent records become final. False unless the session was open."""
+    return db.update("UPDATE class_session SET status = 'closed' WHERE session_id = %s AND status = 'open'", (session_id,)) == 1
+
+
+def cancel(session_id: int) -> bool:
+    """F5.5: the class did not happen, so it counts towards nobody's Attendance Percentage.
+    False unless the session was open: a closed register is final (F5.4)."""
+    return db.update("UPDATE class_session SET status = 'cancelled' WHERE session_id = %s AND status = 'open'", (session_id,)) == 1
+
+
+def recently_marked(session_id: int) -> list[dict]:
+    """The session's Students who are no longer absent, most recently marked first."""
+    return db.query(
+        "SELECT s.name, a.status, a.minutes_late FROM attendance a JOIN student s ON s.student_id = a.student_id"
+        " WHERE a.session_id = %s AND a.status <> 'absent' ORDER BY a.marked_at DESC, s.name",
+        (session_id,),
     )
-    return True
-
-
-def close(session_id: int) -> None:
-    """F5.4: the remaining absent records become final. Only an open session can be closed."""
-    db.execute("UPDATE class_session SET status = 'closed' WHERE session_id = %s AND status = 'open'", (session_id,))
-
-
-def cancel(session_id: int) -> None:
-    """F5.5: the class did not happen. It counts towards nobody's Attendance Percentage."""
-    db.execute("UPDATE class_session SET status = 'cancelled' WHERE session_id = %s", (session_id,))
 
 
 def marked_students(session_id: int) -> set[int]:

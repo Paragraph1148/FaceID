@@ -112,13 +112,13 @@ Other rules:
 
 - **F4.1**: While a Class Session is open, the server reads frames from the webcam (DirectShow on Windows, V4L2 on Linux), requesting MJPG at 1280×720.
   - It runs HOG detection on every processed frame at full resolution and follows each face from frame to frame.
-  - A followed face is encoded until it is identified (or labelled Unknown), and compared with the cached encodings of that session's Expected Students. After that, only its eye landmarks are read each frame.
+  - A followed face is encoded until it is identified (or labelled Unknown), and compared with the cached encodings of that session's Expected Students. After that, only its eye landmarks are read each frame, except that an Unknown face is encoded again every 10th frame (its first view may have been poor) and an identified face is encoded once more when it blinks (see F4.3).
   - Encoding is the expensive step, about 0.1 s per face on the development laptop, so only faces still being identified are encoded.
   - The detector is a setting: `hog` (default) or `cnn`.
 - **F4.2**: A face matches the Student with the smallest Face Distance, if that distance is ≤ the Tolerance (default 0.6). Otherwise it's labelled "Unknown".
 - **F4.3**: A Student is **marked** only when all three of these hold:
   1. They matched in the Confirmation Frames number of consecutive processed frames (default 3).
-  2. A Blink was seen on their face during the session. Blink means: the Eye Aspect Ratio, averaged over both eyes using the 6-point eye landmarks, falls below 0.25 for at least 1 processed frame and then rises back above it.
+  2. A Blink was seen on their face while it matched them, and the face still matches them when it blinks. So a photo identified first and a live person blinking in its place (or the reverse) are never marked. Blink means: the Eye Aspect Ratio, averaged over both eyes using the 6-point eye landmarks, falls below 0.25 for at least 1 processed frame and then rises back above it.
   3. If the Spoof Check is enabled, it passes.
 - **F4.4**: The browser shows the live feed with a box and name on each face, coloured by state: unknown, matched but waiting for a blink, or marked. Beside it is a running "marked / expected" count.
 - **F4.5**: Tolerance, Confirmation Frames, the EAR threshold, the blink frame count, the detection scale and upsampling, the detector and the Late Threshold are all settings in one config file. None of them is hard-coded.
@@ -137,7 +137,7 @@ Other rules:
   - `marked_at` and `confidence` (= 1 − Face Distance) are recorded.
   - A Student already marked is never marked again: the first recognition wins.
 - **F5.4**: The session keeps scanning until the Faculty presses **Close**. Closing makes the remaining `absent` records final, and a closed session can't be reopened.
-- **F5.5**: Cancelling a session sets its status to `cancelled`. Cancelled sessions count towards nobody's Attendance Percentage.
+- **F5.5**: Cancelling an open session sets its status to `cancelled`. Cancelled sessions count towards nobody's Attendance Percentage. A closed session can't be cancelled, because its register is final (F5.4).
 - **F5.6**: A Faculty member can apply Manual Override to any record of their own sessions, open or closed:
   - The status is set to `present`, `late` or `absent`, and the method to `manual`.
   - If the override is `late`, the Faculty enters the minutes late.

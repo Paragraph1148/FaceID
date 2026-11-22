@@ -37,10 +37,11 @@ class CameraFeed:
         """
         return self.next_frame(after=0.0)[1]
 
-    def next_frame(self, after: float) -> tuple[float, np.ndarray]:
+    def next_frame(self, after: float, cancel: threading.Event | None = None) -> tuple[float, np.ndarray]:
         """(capture time, copy of the frame) for a fresh frame captured later than `after`.
 
-        Live recognition passes the time of the frame it processed last, so it never sees a frame twice.
+        Live recognition passes the time of the frame it processed last, so it never sees a frame twice,
+        and its stop event as `cancel`, so stopping never waits for the camera.
         """
         with self._lock:
             self._last_request = time.monotonic()
@@ -54,6 +55,8 @@ class CameraFeed:
             latest, error = self._frame, self._error
             if error:
                 raise CameraUnavailable(error)
+            if cancel is not None and cancel.is_set():
+                raise CameraUnavailable("Stopped.")
             if latest is not None and latest[0] > after and time.monotonic() - latest[0] < FRESH_SECONDS:
                 return latest[0], latest[1].copy()
             time.sleep(0.005)
