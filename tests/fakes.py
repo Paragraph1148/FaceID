@@ -6,13 +6,14 @@ import numpy as np
 
 from faceid.vision import DetectedFace
 
-OPEN_EYE = ((0, 5), (3, 2), (6, 2), (9, 5), (6, 8), (3, 8))  # Eye Aspect Ratio = 1.0
+OPEN_EYE = ((0, 5), (3, 2), (6, 2), (9, 5), (6, 8), (3, 8))  # Eye Aspect Ratio 0.67
+CLOSED_EYE = ((0, 5), (3, 5), (6, 5), (9, 5), (6, 5), (3, 5))  # Eye Aspect Ratio 0
 
 
-def face(left=100, width=120, encoding=None, sharpness=200.0):
-    """A scripted face: a box, open eyes, and the encoding and sharpness the engine will report for it."""
+def face(left=100, width=120, encoding=None, sharpness=200.0, eyes=OPEN_EYE):
+    """A scripted face: a box, eyes, and the encoding and sharpness the engine will report for it."""
     box = (100, left + width, 100 + width, left)
-    return ScriptedFace(DetectedFace(box=box, left_eye=OPEN_EYE, right_eye=OPEN_EYE), encoding, sharpness)
+    return ScriptedFace(DetectedFace(box=box, left_eye=eyes, right_eye=eyes), encoding, sharpness)
 
 
 def encoding(seed):
@@ -36,17 +37,23 @@ class ScriptedFace:
 
 
 class ScriptedEngine:
-    """Reports whatever faces the test last `show`ed, for every frame."""
+    """Reports whatever faces the test last `show`ed, for every frame.
+
+    Faces shown earlier stay known, because live recognition may still be encoding one when the test moves on.
+    """
 
     def __init__(self):
         self.faces = []
+        self._known = {}
         self.encode_calls = 0
 
     def show(self, *faces):
+        for f in faces:
+            self._known[f.detected] = f
         self.faces = list(faces)
 
     def _scripted(self, detected):
-        return next(f for f in self.faces if f.detected == detected)
+        return self._known[detected]
 
     def detect(self, frame):
         return [f.detected for f in self.faces]

@@ -1,9 +1,11 @@
 """Where frames come from (DESIGN: camera seam).
 
-`WebcamSource` reads the server's webcam. A `VideoFileSource` for recorded clips joins it in v0.3.0.
+`WebcamSource` reads the server's webcam. `VideoFileSource` plays a recorded clip instead, for the
+classroom evaluation (SPEC §7.2) and for rehearsing without a camera.
 """
 
 import sys
+import time
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -53,6 +55,29 @@ class WebcamSource:
 
     def read(self) -> np.ndarray | None:
         """The next frame as a BGR array, or None if the camera returned nothing."""
+        ok, frame = self._capture.read()
+        return frame if ok else None
+
+    def close(self) -> None:
+        self._capture.release()
+
+
+class VideoFileSource:
+    """Plays a video file as if it were the webcam: at the clip's own speed, ending with None."""
+
+    def __init__(self, path: str, realtime: bool = True):
+        self._capture = cv2.VideoCapture(path)
+        if not self._capture.isOpened():
+            raise CameraUnavailable(f"The video file {path} could not be opened.")
+        fps = self._capture.get(cv2.CAP_PROP_FPS) or 30.0
+        self._interval = 1 / fps if realtime else 0.0
+        self._next_at = time.monotonic()
+
+    def read(self) -> np.ndarray | None:
+        delay = self._next_at - time.monotonic()
+        if delay > 0:
+            time.sleep(delay)
+        self._next_at = max(self._next_at, time.monotonic()) + self._interval
         ok, frame = self._capture.read()
         return frame if ok else None
 

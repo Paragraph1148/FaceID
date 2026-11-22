@@ -218,3 +218,22 @@ def encodings_of_other_students(student_id: int) -> dict[str, list[np.ndarray]]:
     for row in rows:
         gallery.setdefault(f"{row['name']} ({row['enrollment_no']})", []).append(_from_blob(row["encoding_vector"]))
     return gallery
+
+
+def encodings_of_session(session_id: int) -> tuple[dict[int, list[np.ndarray]], dict[int, str]]:
+    """The Face Encodings and names of a Class Session's Expected Students, for live recognition (F4.6).
+
+    Returns ({student_id: encodings}, {student_id: name}). Students without encodings are left out of the first.
+    """
+    rows = db.query(
+        "SELECT s.student_id, s.name, e.encoding_vector FROM attendance a JOIN student s ON s.student_id = a.student_id"
+        " LEFT JOIN face_encoding e ON e.student_id = s.student_id WHERE a.session_id = %s",
+        (session_id,),
+    )
+    gallery: dict[int, list[np.ndarray]] = {}
+    names: dict[int, str] = {}
+    for row in rows:
+        names[row["student_id"]] = row["name"]
+        if row["encoding_vector"] is not None:
+            gallery.setdefault(row["student_id"], []).append(_from_blob(row["encoding_vector"]))
+    return gallery, names

@@ -9,6 +9,7 @@ warnings.filterwarnings("ignore", message="pkg_resources is deprecated", categor
 
 import atexit
 import secrets
+from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, render_template
@@ -17,6 +18,8 @@ from faceid import cli, settings
 from faceid.camera import WebcamSource
 from faceid.enrolment import DraftStore
 from faceid.feed import CameraFeed
+from faceid.live import LiveSession
+from faceid.presence import PresenceRules
 from faceid.vision import DlibEngine
 from faceid.store import db
 
@@ -68,7 +71,10 @@ def _instance_secret_key(instance_dir: Path) -> str:
 
 
 def _attach_camera_and_engine(app: Flask) -> None:
-    """One shared camera feed and face engine per server. Tests pass fakes as CAMERA_SOURCE and FACE_ENGINE."""
+    """One shared camera feed, face engine and live session per server.
+
+    Tests pass fakes as CAMERA_SOURCE and FACE_ENGINE, and a fixed CLOCK.
+    """
     config = app.config
     open_camera = config.get("CAMERA_SOURCE") or WebcamSource
     app.extensions["camera_feed"] = CameraFeed(
@@ -78,6 +84,15 @@ def _attach_camera_and_engine(app: Flask) -> None:
         config["DETECTOR"], config["DETECTION_SCALE"], config["DETECTION_UPSAMPLE"]
     )
     app.extensions["enrolment_drafts"] = DraftStore()  # in memory only (ADR 0002)
+
+    from faceid.store.live import AppLiveStore
+
+    rules = PresenceRules(config["TOLERANCE"], config["CONFIRMATION_FRAMES"], config["EAR_THRESHOLD"], config["BLINK_FRAMES"])
+    app.extensions["live"] = LiveSession(
+        app.extensions["camera_feed"], app.extensions["face_engine"], AppLiveStore(app), rules,
+        config["LATE_THRESHOLD_MINUTES"], clock=config.get("CLOCK") or datetime.now,
+    )
     if not app.testing:
-        # Release the webcam on exit; a camera thread still running at interpreter shutdown can crash it.
+        # Stop recognition, then release the webcam; threads still running at interpreter shutdown can crash it.
         atexit.register(app.extensions["camera_feed"].stop)
+        atexit.register(app.extensions["live"].stop)  # atexit runs in reverse order: this one first

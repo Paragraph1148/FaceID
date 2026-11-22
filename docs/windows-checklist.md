@@ -24,7 +24,7 @@ Run this on the demo laptop (Windows 11) for every release. It takes about 20 mi
    - If Windows Firewall asks, tick **Private networks** and click **Allow**. That lets phones on the same Wi-Fi reach it.
 4. Log in as the Admin.
 
-## Checks for v0.1.0
+## Checks
 
 | # | Do this | Expected |
 |---|---|---|
@@ -41,7 +41,15 @@ Run this on the demo laptop (Windows 11) for every release. It takes about 20 mi
 | 11 | On the enrolment page: press **Capture** with nobody in view; then with two people in view; then from 3 m away; then while moving your head quickly | Refused each time, with the reason: no face / 2 faces / too small / blurred |
 | 12 | Sit at 50 cm and watch the box | Green when you're close and still; amber when too far or moving |
 | 13 | Enrol an already-enrolled Student again (**Re-enrol face**) and save | The Student list still shows **Enrolled (5)**, not 10 |
-| 14 | Close the `run.bat` window | FaceID stops |
+| 14 | As the Admin, make sure the Subject from check 5 is in the same Programme and semester as the enrolled Student. Log in as its Faculty member (private window) and press **Start a Class Session** with the current time | The session page shows the live camera and "0 / N Students marked" |
+| 15 | The enrolled Student sits at 50 cm and looks at the camera without blinking for 5 seconds | Amber box: "*name*: blink to confirm". Not marked |
+| 16 | The Student blinks once | The box turns green within about a second; the count goes up and the name appears in the list. The record shows **Present**, method **face** |
+| 17 | Hold a phone photo of the enrolled Student up to the camera | Amber box at most; never marked (unless already marked) |
+| 18 | Start another session with a start time 25 minutes ago (close the first one), then let the Student blink | Marked **Late (25 min)** |
+| 19 | In **Manual Override**, set another Student to Late with 15 minutes, and save | The row shows **Late (15 min)**, method **manual** |
+| 20 | Read "Recognition: … frames/s" with one face, and with as many faces as you can gather | Write both numbers in the results table |
+| 21 | Press **Close session** | Status **Closed**; the camera light goes off within about 15 seconds |
+| 22 | Close the `run.bat` window | FaceID stops |
 
 ## Results to send back
 
@@ -53,6 +61,7 @@ Run this on the demo laptop (Windows 11) for every release. It takes about 20 mi
 | frames/s processed with one face (check 3) | |
 | Furthest distance the box still appeared (check 4) | |
 | Sharpness sitting still / moving (check 10) | |
+| Recognition frames/s with one face / most faces, and how many faces (check 20) | |
 | Checks that failed (number + screenshot) | |
 
 ## If something fails

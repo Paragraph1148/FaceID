@@ -1,0 +1,112 @@
+{% extends "faculty/layout.html" %}
+{% from "macros.html" import csrf %}
+{% block title %}{{ session.subject_code }} Class Session{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h1 class="h3 mb-1">{{ session.subject_code }} {{ session.subject_name }}</h1>
+    <p class="text-body-secondary mb-0">{{ session.session_date.strftime('%d %b %Y') }},
+      {{ session.start_time.strftime('%H:%M') }}–{{ session.end_time.strftime('%H:%M') }}
+      {% if session.room_no %}· Room {{ session.room_no }}{% endif %}
+      · {{ session.course }} semester {{ session.semester }}
+      · <span class="fw-semibold">{{ session.status|capitalize }}</span></p>
+  </div>
+  {% if session.status != 'cancelled' %}
+  <div class="d-flex gap-2">
+    {% if session.status == 'open' %}
+    <form method="post" action="{{ url_for('faculty.close_session', session_id=session.session_id) }}"
+          onsubmit="return confirm('Close this Class Session? Students not marked yet will be absent.')">
+      {{ csrf() }}<button class="btn btn-success">Close session</button></form>
+    {% endif %}
+    <form method="post" action="{{ url_for('faculty.cancel_session', session_id=session.session_id) }}"
+          onsubmit="return confirm('Cancel this Class Session? It will count towards nobody\'s attendance.')">
+      {{ csrf() }}<button class="btn btn-outline-danger">Cancel session</button></form>
+  </div>
+  {% endif %}
+</div>
+
+{% if session.status == 'open' %}
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <img class="img-fluid border rounded bg-black" src="{{ url_for('faculty.session_stream', session_id=session.session_id) }}" alt="Live camera">
+    <p class="small text-body-secondary mt-2">Red: not recognised. Amber: recognised, waiting for a blink. Green: marked.</p>
+  </div>
+  <div class="col-lg-4">
+    <div class="card card-body">
+      <div class="display-6"><span id="attended">{{ session.attended }}</span> / {{ session.expected }}</div>
+      <div class="text-body-secondary mb-2">Students marked</div>
+      <div id="camera-error" class="alert alert-danger py-2 d-none"></div>
+      <ul id="marked" class="list-unstyled mb-2 small"></ul>
+      <div class="small text-body-secondary" id="fps"></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% set not_enrolled = records|rejectattr('enrolled')|list %}
+{% if session.status == 'open' and not_enrolled %}
+<div class="alert alert-warning">{{ not_enrolled|length }} Expected Student{{ 's' if not_enrolled|length != 1 }} not enrolled,
+  so the camera can't recognise them: {{ not_enrolled|map(attribute='name')|join(', ') }}. Use Manual Override below.</div>
+{% endif %}
+
+<h2 class="h5" id="records">Attendance Records</h2>
+<table class="table table-sm align-middle bg-body">
+  <thead><tr><th>Enrolment Number</th><th>Name</th><th>Status</th><th>Marked</th><th>Method</th><th>Confidence</th>
+    {% if session.status != 'cancelled' %}<th>Manual Override</th>{% endif %}</tr></thead>
+  <tbody>
+  {% for r in records %}
+  <tr>
+    <td>{{ r.enrollment_no }}</td>
+    <td>{{ r.name }}</td>
+    <td>{{ r.status|capitalize }}{% if r.status == 'late' %} ({{ r.minutes_late }} min){% endif %}</td>
+    <td>{{ r.marked_at.strftime('%H:%M') if r.marked_at and r.status != 'absent' else '' }}</td>
+    <td>{{ r.method }}</td>
+    <td>{{ '%.2f'|format(r.confidence) if r.confidence is not none else '' }}</td>
+    {% if session.status != 'cancelled' %}
+    <td>
+      <form method="post" class="d-flex gap-1" action="{{ url_for('faculty.override_record', session_id=session.session_id, student_id=r.student_id) }}">
+        {{ csrf() }}
+        <select class="form-select form-select-sm" name="status" style="width: 7rem" aria-label="Status for {{ r.name }}">
+          {% for status in ('present', 'late', 'absent') %}
+          <option value="{{ status }}" {% if status == r.status %}selected{% endif %}>{{ status|capitalize }}</option>
+          {% endfor %}
+        </select>
+        <input class="form-control form-control-sm" name="minutes_late" type="number" min="1" max="{{ session.session_minutes }}"
+               placeholder="min late" style="width: 6rem" value="{{ r.minutes_late or '' }}" aria-label="Minutes late for {{ r.name }}">
+        <button class="btn btn-sm btn-outline-primary">Save</button>
+      </form>
+    </td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% if session.status == 'open' %}
+<script>
+// Refresh the count and the list of marked Students every two seconds (F4.4).
+(function () {
+  const statusUrl = "{{ url_for('faculty.session_status', session_id=session.session_id) }}";
+  async function refresh() {
+    const response = await fetch(statusUrl);
+    if (!response.ok) return;
+    const data = await response.json();
+    if (data.status !== "open") { location.reload(); return; }
+    document.getElementById("attended").textContent = data.attended;
+    const error = document.getElementById("camera-error");
+    error.textContent = data.error || "";
+    error.classList.toggle("d-none", !data.error);
+    document.getElementById("fps").textContent = data.recognising ? `Recognition: ${data.fps} frames/s` : "";
+    const list = document.getElementById("marked");
+    list.replaceChildren(...data.marked.map(function (m) {
+      const item = document.createElement("li");
+      item.textContent = m.name + (m.status === "late" ? ` (late, ${m.minutes_late} min)` : "");
+      return item;
+    }));
+  }
+  refresh();
+  setInterval(refresh, 2000);
+})();
+</script>
+{% endif %}
+{% endblock %}

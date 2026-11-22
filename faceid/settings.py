@@ -13,6 +13,11 @@ DEFAULTS = {
     "MIN_FACE_WIDTH": 80,            # px
     "MIN_SHARPNESS": 30.0,           # variance of the Laplacian; provisional until calibrated on the demo laptop
     "TOLERANCE": 0.6,                # largest Face Distance at which two Face Encodings are the same Student
+    # Live recognition (F4.3) and marking (F5.3)
+    "CONFIRMATION_FRAMES": 3,        # consecutive matching frames before a Student can be marked
+    "EAR_THRESHOLD": 0.25,           # Eye Aspect Ratio below this is a closed eye (the spike measured 0.28-0.43 open)
+    "BLINK_FRAMES": 1,               # frames the eyes must stay closed to count as a Blink
+    "LATE_THRESHOLD_MINUTES": 10,
 }
 
 

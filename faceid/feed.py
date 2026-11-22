@@ -35,6 +35,13 @@ class CameraFeed:
 
         Raises CameraUnavailable if the camera can't be opened or sends nothing.
         """
+        return self.next_frame(after=0.0)[1]
+
+    def next_frame(self, after: float) -> tuple[float, np.ndarray]:
+        """(capture time, copy of the frame) for a fresh frame captured later than `after`.
+
+        Live recognition passes the time of the frame it processed last, so it never sees a frame twice.
+        """
         with self._lock:
             self._last_request = time.monotonic()
             if self._thread is None or not self._thread.is_alive():
@@ -47,9 +54,9 @@ class CameraFeed:
             latest, error = self._frame, self._error
             if error:
                 raise CameraUnavailable(error)
-            if latest is not None and time.monotonic() - latest[0] < FRESH_SECONDS:
-                return latest[1].copy()
-            time.sleep(0.01)
+            if latest is not None and latest[0] > after and time.monotonic() - latest[0] < FRESH_SECONDS:
+                return latest[0], latest[1].copy()
+            time.sleep(0.005)
         raise CameraUnavailable(f"The camera sent no picture within {self._first_frame_timeout:.0f} seconds.")
 
     def stop(self) -> None:

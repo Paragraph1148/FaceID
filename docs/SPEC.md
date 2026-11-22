@@ -126,10 +126,11 @@ Other rules:
 
 ### 5.5 Class Sessions and attendance marking (Faculty)
 
-- **F5.1**: A Faculty member creates a Class Session for one of their Subjects with a date, start time, end time and optional room number.
+- **F5.1**: A Faculty member creates a Class Session for one of their active Subjects with a start time, end time and optional room number. Its date is today, and creating it opens it ([ADR 0007](adr/0007-creating-a-class-session-opens-it.md)).
 - **F5.2**: Opening a session:
   - Creates one Attendance Record per Expected Student, with status `absent` and method `face`.
-  - Fails if the server already has an open session (one camera).
+  - Fails if the server already has an open session (one camera), or if the Subject has no Expected Students.
+  - A Student marked by Manual Override is never changed by recognition afterwards.
 - **F5.3**: When a Student is marked, their record changes as follows:
   - Recognised at or before start time + Late Threshold (default 10 minutes): becomes `present`.
   - Recognised later: becomes `late`, with `minutes_late` set.

@@ -1,7 +1,8 @@
-"""Live camera preview for the browser (MJPEG), used by the diagnostics and Face Enrolment pages.
+"""Live camera views for the browser (MJPEG).
 
-Each face gets a box labelled with its width and sharpness, the two things Face Enrolment checks,
-so the operator can see a problem before pressing Capture. Frames are only ever held in memory.
+`mjpeg_preview` serves the diagnostics and Face Enrolment pages: each face gets a box labelled with its width and sharpness, the two things Face Enrolment checks,
+so the operator can see a problem before pressing Capture. `mjpeg_live` serves an open Class Session,
+drawing the live recognition's latest boxes and names. Frames are only ever held in memory.
 """
 
 import time
@@ -13,10 +14,13 @@ import numpy as np
 from faceid.camera import CameraUnavailable
 from faceid.enrolment import EnrolmentRules
 from faceid.feed import CameraFeed
+from faceid.live import LiveSession
 from faceid.vision import FaceEngine
 
-GREEN, AMBER, YELLOW, WHITE = (0, 200, 0), (0, 165, 255), (0, 255, 255), (255, 255, 255)
+GREEN, AMBER, YELLOW, WHITE, RED = (0, 200, 0), (0, 165, 255), (0, 255, 255), (255, 255, 255), (0, 0, 220)
 MAX_FPS = 15  # the browser needs no more, and it leaves CPU for recognition
+LIVE_MAX_FPS = 25  # N1 asks for a live view of at least 20 frames per second
+STATE_COLOURS = {"unknown": RED, "waiting": AMBER, "marked": GREEN}
 
 
 def mjpeg_preview(feed: CameraFeed, engine: FaceEngine, rules: EnrolmentRules) -> Iterator[bytes]:
@@ -45,6 +49,29 @@ def mjpeg_preview(feed: CameraFeed, engine: FaceEngine, rules: EnrolmentRules) -
         last = now
         _status_bar(frame, f"{frame.shape[1]}x{frame.shape[0]}  |  {fps:4.1f} frames/s processed  |  faces: {len(faces)}")
         yield _jpeg_part(frame)
+
+
+def mjpeg_live(feed: CameraFeed, live: LiveSession, session_id: int) -> Iterator[bytes]:
+    """The open Class Session's camera with each face's box and name, until the session stops recognising."""
+    last = time.perf_counter()
+    while live.session_id == session_id:
+        try:
+            frame = feed.latest_frame()
+        except CameraUnavailable as error:
+            yield _jpeg_part(_message_frame(str(error)))
+            return
+        for face in live.faces:
+            top, right, bottom, left = face.box
+            colour = STATE_COLOURS[face.state]
+            cv2.rectangle(frame, (left, top), (right, bottom), colour, 2)
+            cv2.putText(frame, face.label, (left, top - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.6, colour, 2)
+        _status_bar(frame, f"recognition {live.fps:4.1f} frames/s  |  faces: {len(live.faces)}")
+        elapsed = time.perf_counter() - last
+        if elapsed < 1 / LIVE_MAX_FPS:
+            time.sleep(1 / LIVE_MAX_FPS - elapsed)
+        last = time.perf_counter()
+        yield _jpeg_part(frame)
+    yield _jpeg_part(_message_frame("This Class Session is no longer open."))
 
 
 def _status_bar(frame: np.ndarray, text: str) -> None:

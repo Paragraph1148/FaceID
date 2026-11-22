@@ -73,7 +73,7 @@ def test_faculty_logs_in_with_email(app, client):
 
     page = submit(client, "/password", {"current_password": "temp-pass-1", "new_password": "faculty-pass", "confirm_password": "faculty-pass"})
 
-    assert "Faculty dashboard" in page.get_data(as_text=True)
+    assert "<h1 class=\"h3 mb-0\">Class Sessions</h1>" in page.get_data(as_text=True)
 
 
 def test_each_role_is_kept_out_of_the_others_pages(app, client):
