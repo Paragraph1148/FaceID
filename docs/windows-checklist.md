@@ -43,7 +43,7 @@ Run this on the demo laptop (Windows 11) for every release. It takes about 20 mi
 | 13 | Enrol an already-enrolled Student again (**Re-enrol face**) and save | The Student list still shows **Enrolled (5)**, not 10 |
 | 14 | As the Admin, make sure the Subject from check 5 is in the same Programme and semester as the enrolled Student. Log in as its Faculty member (private window) and press **Start a Class Session** with the current time | The session page shows the live camera and "0 / N Students marked" |
 | 15 | The enrolled Student sits at 50 cm and looks at the camera without blinking for 5 seconds | Amber box: "*name*: blink to confirm". Not marked |
-| 16 | The Student blinks once | The box turns green within about a second; the count goes up and the name appears in the list. The record shows **Present**, method **face** |
+| 16 | The Student blinks once | The box turns green within about a second; the count goes up and the name appears in the list. Without reloading the page, the Attendance Records row shows **Present**, method **face** |
 | 17 | Hold a phone photo of the enrolled Student up to the camera | Amber box at most; never marked (unless already marked) |
 | 18 | Start another session with a start time 25 minutes ago (close the first one), then let the Student blink | Marked **Late (25 min)** |
 | 19 | In **Manual Override**, set another Student to Late with 15 minutes, and save | The row shows **Late (15 min)**, method **manual** |

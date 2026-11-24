@@ -100,6 +100,17 @@ def test_a_student_who_matches_and_blinks_is_marked_present_with_confidence(facu
     assert "<td>Present</td>" in page and "<td>0.80</td>" in page and "<td>face</td>" in page
 
 
+def test_the_open_page_refreshes_the_records_table_without_a_reload(faculty_client, classroom, engine):
+    start(faculty_client, classroom["ml"])
+    assert "<td>Present</td>" not in status(faculty_client)["records_html"]
+
+    blink(engine, near(RAVI_FACE, 0.2))
+
+    wait_until(lambda: status(faculty_client)["attended"] == 1)
+    rows = status(faculty_client)["records_html"]
+    assert "<td>Present</td>" in rows and "<td>0.80</td>" in rows and "Asha Verma" in rows
+
+
 def test_a_student_who_never_blinks_is_not_marked(faculty_client, classroom, engine, app):
     start(faculty_client, classroom["ml"])
 
