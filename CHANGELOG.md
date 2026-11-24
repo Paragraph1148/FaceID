@@ -7,6 +7,12 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-24
+
+### Fixed
+
+- The Attendance Records table on an open Class Session's page now updates as Students are marked, instead of only after the page is reloaded. A Manual Override being edited is left alone until it is saved.
+
 ## [0.3.0] - 2026-11-22
 
 ### Added
@@ -58,7 +64,8 @@ First build for the demo laptop. It proves the stack (dlib, webcam, MySQL) works
 - Bootstrap 5.3.9 is stored in the repo, so the app works offline.
 - Planning documents: specification, module design, glossary, ADRs 0001–0006, stack research, and the camera spike findings.
 
-[Unreleased]: https://github.com/Paragraph1148/FaceID/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Paragraph1148/FaceID/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/Paragraph1148/FaceID/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Paragraph1148/FaceID/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Paragraph1148/FaceID/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Paragraph1148/FaceID/releases/tag/v0.1.0

@@ -97,6 +97,9 @@ def session_status(session_id):
         attended=class_session["attended"],
         expected=class_session["expected"],
         marked=attendance.recently_marked(session_id),
+        records_html=render_template(
+            "faculty/_records.html", class_session=class_session, records=attendance.records(session_id), statuses=STATUSES
+        ),
         **_live().report(session_id),
     )
 

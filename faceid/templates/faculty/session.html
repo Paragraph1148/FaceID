@@ -51,32 +51,8 @@
 <table class="table table-sm align-middle bg-body">
   <thead><tr><th>Enrolment Number</th><th>Name</th><th>Status</th><th>Marked</th><th>Method</th><th>Match Confidence</th>
     {% if class_session.status != 'cancelled' %}<th>Manual Override</th>{% endif %}</tr></thead>
-  <tbody>
-  {% for r in records %}
-  <tr>
-    <td>{{ r.enrollment_no }}</td>
-    <td>{{ r.name }}</td>
-    <td>{{ r.status|capitalize }}{% if r.status == 'late' %} ({{ r.minutes_late }} min){% endif %}</td>
-    <td>{{ r.marked_at.strftime('%H:%M') if r.marked_at and r.status != 'absent' else '' }}</td>
-    <td>{{ r.method }}</td>
-    <td>{{ '%.2f'|format(r.confidence) if r.confidence is not none else '' }}</td>
-    {% if class_session.status != 'cancelled' %}
-    <td>
-      <form method="post" class="d-flex gap-1" action="{{ url_for('faculty.override_record', session_id=class_session.session_id, student_id=r.student_id) }}">
-        {{ csrf() }}
-        <select class="form-select form-select-sm" name="status" style="width: 7rem" aria-label="Status for {{ r.name }}">
-          {% for status in statuses %}
-          <option value="{{ status }}" {% if status == r.status %}selected{% endif %}>{{ status|capitalize }}</option>
-          {% endfor %}
-        </select>
-        <input class="form-control form-control-sm" name="minutes_late" type="number" min="1" max="{{ class_session.session_minutes }}"
-               placeholder="min late" style="width: 6rem" value="{{ r.minutes_late or '' }}" aria-label="Minutes late for {{ r.name }}">
-        <button class="btn btn-sm btn-outline-primary">Save</button>
-      </form>
-    </td>
-    {% endif %}
-  </tr>
-  {% endfor %}
+  <tbody id="record-rows">
+  {% include "faculty/_records.html" %}
   </tbody>
 </table>
 
@@ -91,6 +67,11 @@
     const data = await response.json();
     if (data.status !== "open") { location.reload(); return; }
     document.getElementById("attended").textContent = data.attended;
+    // Leave the rows alone while the Faculty is editing a Manual Override, so their input isn't lost.
+    const rows = document.getElementById("record-rows");
+    if (!rows.contains(document.activeElement) && !rows.querySelector("form[data-edited]")) {
+      rows.innerHTML = data.records_html;
+    }
     const error = document.getElementById("camera-error");
     error.textContent = data.error || "";
     error.classList.toggle("d-none", !data.error);
@@ -102,6 +83,9 @@
       return item;
     }));
   }
+  document.getElementById("record-rows").addEventListener("input", function (event) {
+    event.target.form.dataset.edited = "true";
+  });
   refresh();
   setInterval(refresh, 2000);
 })();
