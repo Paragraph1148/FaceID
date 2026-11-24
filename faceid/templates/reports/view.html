@@ -1,0 +1,7 @@
+{% extends current_user.role ~ "/layout.html" %}
+{% from "macros.html" import report_table %}
+{% block title %}{{ table.title }}{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('reports.index') }}">&larr; Reports</a></p>
+{{ report_table(table, 'reports.download_report', dict(request.args, kind=kind)) }}
+{% endblock %}

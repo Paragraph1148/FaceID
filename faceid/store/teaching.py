@@ -6,11 +6,14 @@ from faceid.attendance import minutes_between
 from faceid.store import db
 
 
-def list_subjects() -> list[dict]:
+def list_subjects(faculty_id: int | None = None) -> list[dict]:
+    """Every Subject, or only those of one Faculty member, active ones first."""
+    where, params = ("WHERE s.faculty_id = %s", (faculty_id,)) if faculty_id is not None else ("", ())
     return db.query(
         "SELECT s.subject_id, s.subject_code, s.subject_name, s.course, s.semester, s.is_active,"
-        " f.name AS faculty_name FROM subject s JOIN faculty f ON f.faculty_id = s.faculty_id"
-        " ORDER BY s.is_active DESC, s.course, s.semester, s.subject_code"
+        f" f.name AS faculty_name FROM subject s JOIN faculty f ON f.faculty_id = s.faculty_id {where}"
+        " ORDER BY s.is_active DESC, s.course, s.semester, s.subject_code",
+        params,
     )
 
 
@@ -57,7 +60,7 @@ _SESSION_SELECT = (
 )
 
 
-def _as_time(value: timedelta | time) -> time:
+def as_time(value: timedelta | time) -> time:
     # mysql-connector returns TIME columns as timedelta.
     return (datetime.min + value).time() if isinstance(value, timedelta) else value
 
@@ -66,7 +69,7 @@ def _with_times(row: dict | None) -> dict | None:
     """Add `starts_at` (a datetime) and `session_minutes`, which the attendance rules need."""
     if row is None:
         return None
-    row["start_time"], row["end_time"] = _as_time(row["start_time"]), _as_time(row["end_time"])
+    row["start_time"], row["end_time"] = as_time(row["start_time"]), as_time(row["end_time"])
     row["starts_at"] = datetime.combine(row["session_date"], row["start_time"])
     row["session_minutes"] = minutes_between(row["start_time"], row["end_time"])
     return row

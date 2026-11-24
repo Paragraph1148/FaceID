@@ -48,8 +48,14 @@ Run this on the demo laptop (Windows 11) for every release. It takes about 20 mi
 | 18 | Start another session with a start time 25 minutes ago (close the first one), then let the Student blink | Marked **Late (25 min)** |
 | 19 | In **Manual Override**, set another Student to Late with 15 minutes, and save | The row shows **Late (15 min)**, method **manual** |
 | 20 | Read "Recognition: … frames/s" with one face, and with as many faces as you can gather | Write both numbers in the results table |
-| 21 | Press **Close session** | Status **Closed**; the camera light goes off within about 15 seconds |
-| 22 | Close the `run.bat` window | FaceID stops |
+| 21 | Press **Close Class Session** | Status **Closed**; the camera light goes off within about 15 seconds |
+| 22 | As the Faculty member, open **Reports**, choose **Subject-wise report** for the Subject, and press **View** | One row per Student with Held, Present, Late, Absent and Attendance Percentage. Only closed Class Sessions count |
+| 23 | Press **XLSX**, **PDF** and **CSV** in turn, and open each file | Excel opens the xlsx and the CSV, a PDF viewer opens the PDF, and all three have the same rows as the page |
+| 24 | Open **Defaulter list** for the Subject with threshold 75, then with 101 | The Students below 75%; then "Enter a Defaulter Threshold from 1 to 100." |
+| 25 | Log in as the enrolled Student (private window) | **My attendance** shows their own Subjects and session history, nobody else's |
+| 26 | Close the `run.bat` window. Double-click **`backup.bat`** and type `D:\faceid-backup.json` (or any folder outside FaceID) | "Saved … to D:\faceid-backup.json" |
+| 27 | Double-click **`restore.bat`**, type the same path, and answer `y`. Start `run.bat` and log in as the Student | "Restored …"; the Student's attendance is unchanged. Keep the backup file private: it holds names and Face Encodings |
+| 28 | Close the `run.bat` window | FaceID stops |
 
 ## Results to send back
 

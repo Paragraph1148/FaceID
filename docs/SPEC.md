@@ -141,26 +141,28 @@ Other rules:
 - **F5.6**: A Faculty member can apply Manual Override to any record of their own sessions, open or closed:
   - The status is set to `present`, `late` or `absent`, and the method to `manual`.
   - If the override is `late`, the Faculty enters the minutes late.
-- **F5.7**: Attendance Credit: Present = 1, Absent = 0, and Late = (session length − minutes late) / session length, floored at 0. Attendance Percentage = Σ credit / number of held sessions × 100.
+- **F5.7**: Attendance Credit: Present = 1, Absent = 0, and Late = (session length − minutes late) / session length, floored at 0. Attendance Percentage = Σ credit / number of held sessions × 100. A held session is a closed one: an open session counts once it is closed, so a class in progress never shows its unmarked Students as absent, and a cancelled one never counts.
 
 ### 5.6 Reports
 
 - **F6.1**: The reports are:
   - Subject-wise: each Student's Attendance Percentage in one Subject.
   - Student-wise: one Student's Attendance Percentage in each of their Subjects.
-  - Date-wise: every record of every session on a date.
+  - Date-wise: every record of every session on a date, with each session's status (open, closed or cancelled).
   - Monthly summary: each Subject × Student for one calendar month.
-  - Defaulter list: Students below the Defaulter Threshold (default 75%) in a Subject.
+  - Defaulter list: Students below the Defaulter Threshold (default 75%, a setting; the report form can change it) in a Subject.
 - **F6.2**: Every report can be viewed in the browser and downloaded as **.xlsx, PDF and CSV**. All three formats contain the same rows.
 - **F6.3**: Who sees which reports:
   - Admin: all reports.
-  - Faculty: reports for their own Subjects.
-  - Student: only their own student-wise report and session history.
+  - Faculty: reports for their own Subjects. A student-wise, date-wise or monthly report shows only those Subjects' rows.
+  - Student: only their own student-wise report (also downloadable) and session history, on their dashboard.
 
 ### 5.7 Operations
 
 - **F7.1**: `flask db-upgrade` applies migrations.
 - **F7.2**: `flask backup <file>` and `flask restore <file>` dump and load the database. That covers encodings, so pre-enrolled demo data survives reinstalls.
+  - Restore asks before replacing anything (`--yes` skips the question), refuses a backup made for a different schema version, and changes nothing if any row fails to load.
+  - On Windows, `backup.bat` and `restore.bat` run them.
 - **F7.3**: `flask evaluate` runs the accuracy evaluation in §7.
 
 ## 6. Non-functional requirements
