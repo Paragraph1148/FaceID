@@ -1,6 +1,6 @@
 """FaceID: face-recognition attendance system."""
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 
 import warnings
 
@@ -39,11 +39,11 @@ def create_app(config: dict | None = None, instance_path: str | None = None) -> 
     cli.register(app)
     _attach_camera_and_engine(app)
 
-    from faceid.web import admin, auth, diagnostics, enrolment, faculty, student
+    from faceid.web import admin, auth, diagnostics, enrolment, faculty, reports, student
 
     auth.login_manager.init_app(app)
     app.jinja_env.globals["csrf_token"] = auth.csrf_token
-    for blueprint in (auth.bp, admin.bp, diagnostics.bp, enrolment.bp, faculty.bp, student.bp):
+    for blueprint in (auth.bp, admin.bp, diagnostics.bp, enrolment.bp, faculty.bp, reports.bp, student.bp):
         app.register_blueprint(blueprint)
 
     @app.before_request

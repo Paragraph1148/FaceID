@@ -40,14 +40,14 @@ def load_account(user_id):
     return Account(role, row) if row else None
 
 
-def role_required(role):
-    """Allow only logged-in accounts of `role`; others get 403 Forbidden."""
+def role_required(*roles):
+    """Allow only logged-in accounts of one of `roles`; others get 403 Forbidden."""
 
     def decorator(view):
         @wraps(view)
         @login_required
         def wrapped(*args, **kwargs):
-            if current_user.role != role:
+            if current_user.role not in roles:
                 abort(403)
             return view(*args, **kwargs)
 

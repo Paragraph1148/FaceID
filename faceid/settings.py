@@ -18,6 +18,8 @@ DEFAULTS = {
     "EAR_THRESHOLD": 0.25,           # Eye Aspect Ratio below this is a closed eye (the spike measured 0.28-0.43 open)
     "BLINK_FRAMES": 1,               # frames the eyes must stay closed to count as a Blink
     "LATE_THRESHOLD_MINUTES": 10,
+    # Reports (F6.1)
+    "DEFAULTER_THRESHOLD": 75,       # Attendance Percentage below which a Student is a Defaulter in a Subject
 }
 
 

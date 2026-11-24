@@ -51,11 +51,11 @@ def test_student_logs_in_with_enrolment_number_and_must_change_password_first(ap
     assert client.get("/student/").headers["Location"].endswith("/password")
 
     page = submit(client, "/password", {"current_password": "SSPU20260001", "new_password": "my-new-pass", "confirm_password": "my-new-pass"})
-    assert "Student dashboard" in page.get_data(as_text=True)
+    assert "My attendance" in page.get_data(as_text=True)
 
     client.get("/logout")
     assert "Wrong login or password" in login(client, "SSPU20260001", "SSPU20260001").get_data(as_text=True)
-    assert "Student dashboard" in login(client, "SSPU20260001", "my-new-pass").get_data(as_text=True)
+    assert "My attendance" in login(client, "SSPU20260001", "my-new-pass").get_data(as_text=True)
 
 
 def test_new_password_must_differ_from_the_temporary_one(app, client):

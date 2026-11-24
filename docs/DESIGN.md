@@ -123,7 +123,8 @@ Plain SQL through mysql-connector-python, with no ORM, so the queries match the 
 | `teaching.py` | Subjects and Class Sessions |
 | `attendance.py` | Opening (creating absent records), marking, Manual Override, closing and cancelling |
 | `live.py` | The `LiveStore` adapter for live recognition |
-| `queries.py` | Read-only report queries |
+| `queries.py` | Read-only report queries: records of closed Class Sessions, a date's records, a Student's Class Session history, the Subjects a viewer can report on |
+| `backup.py` | `dump`, `check` and `restore` for F7.2 |
 
 The store is tested against a real MySQL 8.0.46 in a podman container, never a fake. There is only one adapter, so a fake would test nothing real.
 
@@ -132,9 +133,13 @@ Schema changes are numbered files in `faceid/store/migrations/NNNN_*.sql`.
 ### `faceid/reports/`: building and exporting reports
 
 ```python
-table = build(kind, params, store)   # -> Table(title, columns, rows), using attendance.percentage
-data  = render(table, "xlsx" | "pdf" | "csv")  # -> bytes
+table = build(kind, request.args, Viewer(role, account_id), default_threshold)  # -> Table(title, columns, rows, note)
+data  = render(table, "xlsx" | "pdf" | "csv")                                  # -> bytes
 ```
+
+- `reports/__init__.py` (`build`, `form_choices`, `class_session_history`): parses the request, applies F6.3 (a Faculty member's reports cover the Class Sessions they held; a Student only ever gets their own student-wise report, whatever the request says), reads records through `store.queries`, and calls one builder. A request it can't build raises `BadReportRequest` with a message for the form.
+- `reports/tables.py` (pure): the five builders. `standings(records)` groups records by Subject and Student and applies `attendance.credit` and `attendance.percentage`, so the rule has one definition.
+- `reports/render.py` (pure): xlsx and CSV through Pandas, PDF through ReportLab. `FORMATS` maps each format to its media type and writer; pages and links read it. Text a spreadsheet would run as a formula is kept as text.
 
 There is one `Table` shape and three renderers, so all formats contain the same rows by construction (F6.2).
 
@@ -160,7 +165,7 @@ A view parses the request, checks the role, calls one module, then renders a tem
 
 `create-admin`, `db-upgrade`, `backup`, `restore` and `evaluate`.
 
-Backup and restore are written in Python (JSON for each table), not with `mysqldump`, so they work on Windows without extra steps.
+Backup and restore are written in Python (JSON for each table), not with `mysqldump`, so they work on Windows without extra steps. Values JSON lacks (bytes, dates, times) are tagged so they come back as the same type. Restore runs in one transaction, deleting children first and inserting parents first, so the foreign keys stay checked and a bad row undoes the whole restore.
 
 ### `faceid/evaluation.py`: accuracy (§7)
 
@@ -175,7 +180,7 @@ Defaults for every setting in F4.5, overridden by `instance/config.py`. The `ins
 
 | Kind | What | Where it runs |
 |---|---|---|
-| Unit | `attendance`, `presence`, `enrolment`, `reports.render` through their interfaces | anywhere, instant |
-| Integration | `store`, web views (Flask test client) against real MySQL; Class Sessions also run the real recognition thread with the scripted engine | Linux, podman MySQL |
+| Unit | `attendance`, `presence`, `enrolment`, `reports.tables`, `reports.render` through their interfaces | anywhere, instant |
+| Integration | `store`, web views (Flask test client) and the `backup`/`restore` commands against real MySQL; Class Sessions also run the real recognition thread with the scripted engine | Linux, podman MySQL |
 | Adapter | `DlibEngine` on public-domain sample faces; `VideoFileSource` → `DlibEngine` → `PresenceTracker` on a clip made from them at test time | Linux |
 | Manual | `docs/windows-checklist.md` | demo laptop, each release |

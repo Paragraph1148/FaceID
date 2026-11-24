@@ -1,0 +1,66 @@
+{% extends current_user.role ~ "/layout.html" %}
+{% block title %}Reports{% endblock %}
+{% macro subject_select() %}
+<select class="form-select" name="subject_id" required aria-label="Subject">
+  <option value="">Choose a Subject</option>
+  {% for s in subjects %}
+  <option value="{{ s.subject_id }}" {% if args.get('subject_id') == s.subject_id|string %}selected{% endif %}>
+    {{ s.subject_code }} {{ s.subject_name }} ({{ s.course }} {{ s.semester }}){% if not s.is_active %}, inactive{% endif %}</option>
+  {% endfor %}
+</select>
+{% endmacro %}
+{% block content %}
+<h1 class="h3 mb-3">Reports</h1>
+{% if problem %}<div class="alert alert-danger">{{ problem }}</div>{% endif %}
+<p class="text-body-secondary">Attendance Percentages count closed Class Sessions only, with partial credit for Late.
+  {% if current_user.role == 'faculty' %}You see your own Subjects.{% endif %}</p>
+
+<div class="row g-3">
+  <div class="col-md-6"><form class="card card-body h-100" action="{{ url_for('reports.view', kind='subject') }}">
+    <h2 class="h6">{{ kinds.subject }}</h2>
+    <p class="small text-body-secondary">Each Student's Attendance Percentage in one Subject.</p>
+    {{ subject_select() }}
+    <button class="btn btn-primary mt-2 align-self-start">View</button>
+  </form></div>
+
+  <div class="col-md-6"><form class="card card-body h-100" action="{{ url_for('reports.view', kind='defaulters') }}">
+    <h2 class="h6">{{ kinds.defaulters }}</h2>
+    <p class="small text-body-secondary">Students below the Defaulter Threshold in one Subject.</p>
+    {{ subject_select() }}
+    <div class="input-group mt-2">
+      <span class="input-group-text">Defaulter Threshold</span>
+      <input class="form-control" name="threshold" type="number" min="1" max="100" step="any"
+             value="{{ args.get('threshold', default_threshold) }}" aria-label="Defaulter Threshold">
+      <span class="input-group-text">%</span>
+    </div>
+    <button class="btn btn-primary mt-2 align-self-start">View</button>
+  </form></div>
+
+  <div class="col-md-6"><form class="card card-body h-100" action="{{ url_for('reports.view', kind='student') }}">
+    <h2 class="h6">{{ kinds.student }}</h2>
+    <p class="small text-body-secondary">One Student's Attendance Percentage in each of their Subjects{% if current_user.role == 'faculty' %} that you teach{% endif %}.</p>
+    <select class="form-select" name="student_id" required aria-label="Student">
+      <option value="">Choose a Student</option>
+      {% for s in students %}
+      <option value="{{ s.student_id }}" {% if args.get('student_id') == s.student_id|string %}selected{% endif %}>
+        {{ s.enrollment_no }} {{ s.name }} ({{ s.course }} {{ s.semester }})</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-primary mt-2 align-self-start">View</button>
+  </form></div>
+
+  <div class="col-md-3"><form class="card card-body h-100" action="{{ url_for('reports.view', kind='date') }}">
+    <h2 class="h6">{{ kinds.date }}</h2>
+    <p class="small text-body-secondary">Every record of every Class Session on a date.</p>
+    <input class="form-control" type="date" name="date" required value="{{ args.get('date', '') }}" aria-label="Date">
+    <button class="btn btn-primary mt-2 align-self-start">View</button>
+  </form></div>
+
+  <div class="col-md-3"><form class="card card-body h-100" action="{{ url_for('reports.view', kind='monthly') }}">
+    <h2 class="h6">{{ kinds.monthly }}</h2>
+    <p class="small text-body-secondary">Each Subject and Student for one month.</p>
+    <input class="form-control" type="month" name="month" required value="{{ args.get('month', '') }}" aria-label="Month">
+    <button class="btn btn-primary mt-2 align-self-start">View</button>
+  </form></div>
+</div>
+{% endblock %}
