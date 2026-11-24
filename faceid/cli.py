@@ -47,13 +47,12 @@ def create_admin(username, email, password):
 @click.command("backup")
 @click.argument("file", type=click.Path(dir_okay=False, writable=True))
 @with_appcontext
-def backup_command(file):
+def backup_command(file: str) -> None:
     """Save every row of the database (Face Encodings included) to FILE, as JSON (F7.2)."""
     data = backup.dump()
     with open(file, "w", encoding="utf-8") as out:
         json.dump(data, out)
-    rows = ", ".join(f"{count} {table}" for table, count in backup.counts(data).items())
-    click.echo(f"Saved {rows} to {file}.")
+    click.echo(f"Saved {backup.summary(data)} to {file}.")
     click.echo("It holds names and Face Encodings: keep it private and out of git.")
 
 
@@ -61,7 +60,7 @@ def backup_command(file):
 @click.argument("file", type=click.Path(exists=True, dir_okay=False))
 @click.option("--yes", is_flag=True, help="Don't ask before replacing the database.")
 @with_appcontext
-def restore_command(file, yes):
+def restore_command(file: str, yes: bool) -> None:
     """Replace everything in the database with the backup in FILE (F7.2). Stop the server first."""
     try:
         with open(file, encoding="utf-8") as source:
@@ -75,11 +74,10 @@ def restore_command(file, yes):
         backup.restore(data)
     except Exception as problem:
         raise click.ClickException(f"Nothing was changed: the backup could not be loaded ({problem}).") from None
-    rows = ", ".join(f"{count} {table}" for table, count in backup.counts(data).items())
-    click.echo(f"Restored {rows}.")
+    click.echo(f"Restored {backup.summary(data)}.")
 
 
-def register(app):
+def register(app) -> None:
     app.cli.add_command(db_upgrade)
     app.cli.add_command(create_admin)
     app.cli.add_command(backup_command)

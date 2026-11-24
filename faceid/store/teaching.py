@@ -6,14 +6,11 @@ from faceid.attendance import minutes_between
 from faceid.store import db
 
 
-def list_subjects(faculty_id: int | None = None) -> list[dict]:
-    """Every Subject, or only those of one Faculty member, active ones first."""
-    where, params = ("WHERE s.faculty_id = %s", (faculty_id,)) if faculty_id is not None else ("", ())
+def list_subjects() -> list[dict]:
     return db.query(
         "SELECT s.subject_id, s.subject_code, s.subject_name, s.course, s.semester, s.is_active,"
-        f" f.name AS faculty_name FROM subject s JOIN faculty f ON f.faculty_id = s.faculty_id {where}"
-        " ORDER BY s.is_active DESC, s.course, s.semester, s.subject_code",
-        params,
+        " f.name AS faculty_name FROM subject s JOIN faculty f ON f.faculty_id = s.faculty_id"
+        " ORDER BY s.is_active DESC, s.course, s.semester, s.subject_code"
     )
 
 

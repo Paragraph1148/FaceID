@@ -5,13 +5,15 @@ written from that same Table, so the browser, xlsx, PDF and CSV show the same ro
 """
 
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 
 from faceid.attendance import credit, percentage
 
-COUNTED = "Counts closed Class Sessions only: an open one is counted once it is closed, and cancelled ones never are."
-TOTALS = ("Held", "Present", "Late", "Absent", "Attendance Credit", "Attendance Percentage")
+# Why only closed sessions count: ADR 0008.
+HELD_NOTE = "Counts closed Class Sessions only: an open one is counted once it is closed, and cancelled ones never are."
+STANDING_COLUMNS = ("Held", "Present", "Late", "Absent", "Attendance Credit", "Attendance Percentage")
 
 
 @dataclass(frozen=True)
@@ -38,7 +40,11 @@ class Standing:
 
 
 def standings(records: list[dict]) -> dict[tuple[int, int], Standing]:
-    """Each (subject_id, student_id) in the records, with their Attendance Credit and Percentage."""
+    """Each (subject_id, student_id) in the records, with their Attendance Credit and Percentage.
+
+    Held counts the closed Class Sessions the Student has a record for, i.e. was Expected at, so a
+    Student who joins mid-semester isn't charged for classes held before they joined.
+    """
     grouped = defaultdict(list)
     for r in records:
         grouped[(r["subject_id"], r["student_id"])].append(r)
@@ -51,49 +57,55 @@ def standings(records: list[dict]) -> dict[tuple[int, int], Standing]:
     return result
 
 
-def _people(records: list[dict]) -> dict[int, dict]:
+def _record_by_student(records: list[dict]) -> dict[int, dict]:
+    """One record per Student, to read their Enrolment Number and name from."""
     return {r["student_id"]: r for r in records}
 
 
-def _subjects(records: list[dict]) -> dict[int, dict]:
+def _record_by_subject(records: list[dict]) -> dict[int, dict]:
+    """One record per Subject, to read its code and name from."""
     return {r["subject_id"]: r for r in records}
+
+
+def _subject_rows(records: list[dict], keep: Callable[[Standing], bool] = lambda standing: True) -> list[tuple]:
+    students = _record_by_student(records)
+    return sorted((students[student_id]["enrollment_no"], students[student_id]["name"], *standing.totals())
+                  for (_, student_id), standing in standings(records).items() if keep(standing))
 
 
 def subject_wise(subject: dict, records: list[dict]) -> Table:
     """Each Student's Attendance Percentage in one Subject."""
-    people = _people(records)
-    rows = [(people[student_id]["enrollment_no"], people[student_id]["name"], *standing.totals())
-            for (_, student_id), standing in standings(records).items()]
-    return Table(f"Subject-wise report: {_subject_name(subject)}", ("Enrolment Number", "Name", *TOTALS),
-                 sorted(rows), COUNTED)
+    return Table(f"Subject-wise report: {_subject_name(subject)}", ("Enrolment Number", "Name", *STANDING_COLUMNS),
+                 _subject_rows(records), HELD_NOTE)
 
 
 def student_wise(student: dict, records: list[dict]) -> Table:
     """One Student's Attendance Percentage in each of their Subjects."""
-    subjects = _subjects(records)
+    subjects = _record_by_subject(records)
     rows = [(subjects[subject_id]["subject_code"], subjects[subject_id]["subject_name"], *standing.totals())
             for (subject_id, _), standing in standings(records).items()]
-    return Table(f"Student-wise report: {student['enrollment_no']} {student['name']}", ("Subject Code", "Subject", *TOTALS),
-                 sorted(rows), COUNTED)
+    return Table(f"Student-wise report: {student['enrollment_no']} {student['name']}",
+                 ("Subject Code", "Subject", *STANDING_COLUMNS), sorted(rows), HELD_NOTE)
 
 
 def defaulters(subject: dict, records: list[dict], threshold: float) -> Table:
     """Students below the Defaulter Threshold in one Subject."""
-    report = subject_wise(subject, records)
-    below = [row for row in report.rows if row[-1] < threshold]
-    return Table(f"Defaulter list: {_subject_name(subject)}, below {threshold:g}%", report.columns, below, COUNTED)
+    # Judged on the exact percentage: 74.96% is below 75% even though it is shown as 75.0.
+    return Table(f"Defaulter list: {_subject_name(subject)}, below {threshold:g}%",
+                 ("Enrolment Number", "Name", *STANDING_COLUMNS),
+                 _subject_rows(records, keep=lambda standing: standing.percentage < threshold), HELD_NOTE)
 
 
 def monthly(month: date, records: list[dict]) -> Table:
     """Each Subject x Student, for the Class Sessions of one calendar month."""
-    subjects, people = _subjects(records), _people(records)
+    subjects, students = _record_by_subject(records), _record_by_student(records)
     rows = []
     for (subject_id, student_id), standing in standings(records).items():
-        subject, person = subjects[subject_id], people[student_id]
+        subject, person = subjects[subject_id], students[student_id]
         rows.append((subject["subject_code"], subject["subject_name"], person["enrollment_no"], person["name"],
                      standing.held, round(standing.credit, 2), round(standing.percentage, 1)))
     columns = ("Subject Code", "Subject", "Enrolment Number", "Name", "Held", "Attendance Credit", "Attendance Percentage")
-    return Table(f"Monthly summary: {month:%B %Y}", columns, sorted(rows), COUNTED)
+    return Table(f"Monthly summary: {month:%B %Y}", columns, sorted(rows), HELD_NOTE)
 
 
 def date_wise(day: date, records: list[dict]) -> Table:

@@ -17,7 +17,7 @@ class BackupError(Exception):
     """The file can't be restored into this database; the message says why."""
 
 
-def _encode(value):
+def _encode(value: object) -> object:
     """A JSON-safe form of one column value. Types JSON lacks are tagged so they come back as the same type."""
     if isinstance(value, (bytes, bytearray)):
         return {"bytes": base64.b64encode(value).decode("ascii")}
@@ -30,7 +30,7 @@ def _encode(value):
     return value
 
 
-def _decode(value):
+def _decode(value: object) -> object:
     if not isinstance(value, dict):
         return value
     (kind, text), = value.items()
@@ -69,21 +69,25 @@ def dump() -> dict:
             "tables": tables}
 
 
-def counts(data: dict) -> dict[str, int]:
-    return {table: len(data["tables"][table]["rows"]) for table in TABLES}
+def summary(data: dict) -> str:
+    """e.g. "1 admin, 3 faculty, ...": how many rows of each table the backup holds."""
+    return ", ".join(f"{len(data['tables'][table]['rows'])} {table}" for table in TABLES)
 
 
 def check(data: dict) -> None:
     """Raise BackupError unless `data` is a FaceID backup of exactly this database's schema."""
-    if not isinstance(data, dict) or data.get("format") != FORMAT:
+    if not isinstance(data, dict) or data.get("format") != FORMAT or not isinstance(data.get("tables"), dict):
         raise BackupError("This is not a FaceID backup file.")
     current = _schema_version()
     if data.get("schema") != current:
         raise BackupError(f"The backup has schema version {data.get('schema')}, but this database has {current}. "
                           "Restore it with the FaceID release it was made with.")
     for table in TABLES:
+        content = data["tables"].get(table)
+        columns = _columns(table)
         # Column names are checked against the database, so a file can't smuggle SQL in through them.
-        if data["tables"].get(table, {}).get("columns") != _columns(table):
+        if (not isinstance(content, dict) or content.get("columns") != columns or not isinstance(content.get("rows"), list)
+                or any(not isinstance(row, list) or len(row) != len(columns) for row in content["rows"])):
             raise BackupError(f"The backup's {table} table doesn't match this database.")
 
 

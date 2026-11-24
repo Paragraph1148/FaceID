@@ -62,3 +62,24 @@ def test_an_empty_report_still_renders_its_header():
 def test_an_unknown_format_is_refused():
     with pytest.raises(ValueError):
         render(TABLE, "docx")
+
+
+def test_names_with_markup_characters_render_in_the_pdf():
+    table = Table("Student-wise report: SSPU20260009 A <b> & C", ("Name",), [("A <b> & C",)])
+
+    assert "A <b> & C" in pdf_text(render(table, "pdf")).replace("\\(", "(")
+
+
+@pytest.mark.parametrize("value", ["=HYPERLINK(\"http://x\")", "+1", "-1+2", "@SUM(A1)"])
+def test_text_that_spreadsheets_would_run_as_a_formula_stays_text(value):
+    table = Table("t", ("Name",), [(value,)])
+
+    assert list(csv.reader(io.StringIO(render(table, "csv").decode("utf-8-sig"))))[1] == ["'" + value]
+    cell = openpyxl.load_workbook(io.BytesIO(render(table, "xlsx"))).active["A2"]
+    assert cell.data_type == "s" and cell.value == value
+
+
+def test_numbers_are_not_mistaken_for_formulas():
+    table = Table("t", ("Minutes Late",), [(-1,)])
+
+    assert list(csv.reader(io.StringIO(render(table, "csv").decode("utf-8-sig"))))[1] == ["-1"]

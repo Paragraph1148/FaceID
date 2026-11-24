@@ -105,6 +105,9 @@ def test_a_damaged_backup_changes_nothing(filled, tmp_path):
     (lambda data: data.update(schema=data["schema"] + 1), "schema version"),
     (lambda data: data["tables"]["student"]["columns"].append("favourite_colour"), "student"),
     (lambda data: data.update(format="something else"), "not a FaceID backup"),
+    (lambda data: data.pop("tables"), "not a FaceID backup"),
+    (lambda data: data.update(tables=[]), "not a FaceID backup"),
+    (lambda data: data["tables"]["student"].update(rows=[[1, 2]]), "student"),
 ])
 def test_a_backup_that_does_not_fit_this_schema_is_refused(filled, tmp_path, damage, message):
     path = tmp_path / "backup.json"

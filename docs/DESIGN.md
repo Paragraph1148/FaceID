@@ -123,7 +123,7 @@ Plain SQL through mysql-connector-python, with no ORM, so the queries match the 
 | `teaching.py` | Subjects and Class Sessions |
 | `attendance.py` | Opening (creating absent records), marking, Manual Override, closing and cancelling |
 | `live.py` | The `LiveStore` adapter for live recognition |
-| `queries.py` | Read-only report queries: records of closed sessions, a date's records, a Student's history |
+| `queries.py` | Read-only report queries: records of closed Class Sessions, a date's records, a Student's Class Session history, the Subjects a viewer can report on |
 | `backup.py` | `dump`, `check` and `restore` for F7.2 |
 
 The store is tested against a real MySQL 8.0.46 in a podman container, never a fake. There is only one adapter, so a fake would test nothing real.
@@ -137,9 +137,9 @@ table = build(kind, request.args, Viewer(role, account_id), default_threshold)  
 data  = render(table, "xlsx" | "pdf" | "csv")                                  # -> bytes
 ```
 
-- `reports/__init__.py` (`build`): parses the request, applies F6.3 (a Faculty member's reports are scoped to their Subjects; a Student only ever gets their own student-wise report, whatever the request says), reads records through `store.queries`, and calls one builder. A request it can't build raises `BadReportRequest` with a message for the form.
+- `reports/__init__.py` (`build`, `form_choices`, `class_session_history`): parses the request, applies F6.3 (a Faculty member's reports cover the Class Sessions they held; a Student only ever gets their own student-wise report, whatever the request says), reads records through `store.queries`, and calls one builder. A request it can't build raises `BadReportRequest` with a message for the form.
 - `reports/tables.py` (pure): the five builders. `standings(records)` groups records by Subject and Student and applies `attendance.credit` and `attendance.percentage`, so the rule has one definition.
-- `reports/render.py` (pure): xlsx and CSV through Pandas, PDF through ReportLab.
+- `reports/render.py` (pure): xlsx and CSV through Pandas, PDF through ReportLab. `FORMATS` maps each format to its media type and writer; pages and links read it. Text a spreadsheet would run as a formula is kept as text.
 
 There is one `Table` shape and three renderers, so all formats contain the same rows by construction (F6.2).
 

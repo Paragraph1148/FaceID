@@ -7,6 +7,20 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-24
+
+### Added
+
+- Reports for the Admin and Faculty: subject-wise, student-wise, date-wise, monthly summary and defaulter list. Each can be viewed in the browser and downloaded as Excel (.xlsx), PDF and CSV, with the same rows in every format.
+- Attendance Percentage counts closed Class Sessions only, with partial credit for Late (ADR 0005, ADR 0008). Each Student's Held count is the closed Class Sessions they were Expected at.
+- Faculty see reports on the Class Sessions they held, even after a Subject is reassigned. The Defaulter Threshold defaults to 75% and can be changed on the form.
+- Students get a "My attendance" page with their own student-wise report (downloadable) and Class Session history.
+- `flask backup <file>` and `flask restore <file>`, plus `backup.bat` and `restore.bat` on Windows. A backup holds every row, Face Encodings included, as one JSON file. Restore asks first, refuses a backup for a different schema, and changes nothing if any row fails to load.
+
+### Security
+
+- Names that a spreadsheet would run as formulas stay plain text in the xlsx and CSV files.
+
 ## [0.3.1] - 2026-11-24
 
 ### Fixed
@@ -64,7 +78,8 @@ First build for the demo laptop. It proves the stack (dlib, webcam, MySQL) works
 - Bootstrap 5.3.9 is stored in the repo, so the app works offline.
 - Planning documents: specification, module design, glossary, ADRs 0001–0006, stack research, and the camera spike findings.
 
-[Unreleased]: https://github.com/Paragraph1148/FaceID/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/Paragraph1148/FaceID/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Paragraph1148/FaceID/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/Paragraph1148/FaceID/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Paragraph1148/FaceID/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Paragraph1148/FaceID/compare/v0.1.0...v0.2.0

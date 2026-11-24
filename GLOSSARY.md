@@ -73,7 +73,7 @@ _Avoid_: Correction, edit
 How much of one Class Session a Student is counted as having attended: 1 if Present, 0 if Absent, and if Late the fraction of the session remaining after they arrived.
 
 **Attendance Percentage**:
-A Student's total Attendance Credit in a Subject as a share of the Subject's held Class Sessions. A held Class Session is a closed one: open ones are still in progress and cancelled ones did not happen.
+A Student's total Attendance Credit in a Subject as a share of the Subject's held Class Sessions. A held Class Session is a closed one the Student was Expected at: open ones are still in progress and cancelled ones did not happen.
 
 **Defaulter**:
 A Student whose Attendance Percentage in a Subject is below the Defaulter Threshold.

@@ -141,7 +141,7 @@ Other rules:
 - **F5.6**: A Faculty member can apply Manual Override to any record of their own sessions, open or closed:
   - The status is set to `present`, `late` or `absent`, and the method to `manual`.
   - If the override is `late`, the Faculty enters the minutes late.
-- **F5.7**: Attendance Credit: Present = 1, Absent = 0, and Late = (session length − minutes late) / session length, floored at 0. Attendance Percentage = Σ credit / number of held sessions × 100. A held session is a closed one: an open session counts once it is closed, so a class in progress never shows its unmarked Students as absent, and a cancelled one never counts.
+- **F5.7**: Attendance Credit: Present = 1, Absent = 0, and Late = (session length − minutes late) / session length, floored at 0. Attendance Percentage = Σ credit / number of held sessions × 100. A held session is a closed one that the Student has a record for (they were Expected at it): an open session counts once it is closed, so a class in progress never shows its unmarked Students as absent, and a cancelled one never counts ([ADR 0008](adr/0008-held-means-closed.md)).
 
 ### 5.6 Reports
 
@@ -154,13 +154,14 @@ Other rules:
 - **F6.2**: Every report can be viewed in the browser and downloaded as **.xlsx, PDF and CSV**. All three formats contain the same rows.
 - **F6.3**: Who sees which reports:
   - Admin: all reports.
-  - Faculty: reports for their own Subjects. A student-wise, date-wise or monthly report shows only those Subjects' rows.
-  - Student: only their own student-wise report (also downloadable) and session history, on their dashboard.
+  - Faculty: reports for their own Subjects, covering the Class Sessions they held. If a Subject is reassigned, each Faculty member keeps the sessions they held, as with Manual Override (F5.6).
+  - Student: only their own student-wise report (also downloadable) and Class Session history, on their dashboard.
 
 ### 5.7 Operations
 
 - **F7.1**: `flask db-upgrade` applies migrations.
 - **F7.2**: `flask backup <file>` and `flask restore <file>` dump and load the database. That covers encodings, so pre-enrolled demo data survives reinstalls.
+  - Run restore with the server stopped: a running server keeps its open Class Session in memory.
   - Restore asks before replacing anything (`--yes` skips the question), refuses a backup made for a different schema version, and changes nothing if any row fails to load.
   - On Windows, `backup.bat` and `restore.bat` run them.
 - **F7.3**: `flask evaluate` runs the accuracy evaluation in §7.

@@ -161,3 +161,30 @@ def test_a_student_sees_their_own_report_and_session_history(client, college):
     assert [row[0] for row in csv_rows(client, "/student/report/csv")] == ["CA261481", "CA261482"]
     assert client.get("/student/report/csv?student_id=%d" % college["ravi"]).status_code == 200
     assert "Ravi Kumar" not in client.get("/student/report/csv?student_id=%d" % college["ravi"]).get_data(as_text=True)
+
+
+# --- Review fixes ---
+
+
+def test_a_stray_format_parameter_does_not_break_the_page(client, college):
+    login(client, "admin@college.test", "admin-pass-1")
+
+    assert "Subject-wise report" in page(client, f"/reports/subject?subject_id={college['ml']}&fmt=pdf&kind=x")
+
+
+def test_after_a_subject_is_reassigned_each_faculty_member_sees_the_sessions_they_held(app, client, college):
+    with app.app_context():
+        iyer = people.find_login(IYER[0])[1]["id"]
+        attendance.cancel(teaching.find_open_class_session()["session_id"])  # the fixture's open one: no longer needed
+        teaching.update_subject(college["ml"], "CA261481", "Machine Learning", "MCA", 1, iyer)
+        held(iyer, college["ml"], date(2026, 12, 7), {college["asha"]: ("present", None), college["ravi"]: ("present", None)})
+    login(client, *SHARMA)
+
+    sharma_view = csv_rows(client, f"/reports/subject/csv?subject_id={college['ml']}")
+    assert [row[2] for row in sharma_view] == ["4", "4"]  # the four Sharma held, not Iyer's
+    assert "Machine Learning" in page(client, "/reports/")
+
+    client.post("/logout", data={"csrf_token": ""})
+    other = app.test_client()
+    login(other, *IYER)
+    assert [row[2] for row in csv_rows(other, f"/reports/subject/csv?subject_id={college['ml']}")] == ["1", "1"]

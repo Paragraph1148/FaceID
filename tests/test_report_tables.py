@@ -86,3 +86,15 @@ def test_the_date_wise_report_lists_every_record_with_its_session():
 
 def test_reports_say_which_sessions_they_count():
     assert "closed Class Sessions" in subject_wise(ML, []).note
+
+
+# --- Review fixes ---
+
+
+def test_the_defaulter_test_uses_the_exact_percentage_not_the_rounded_one():
+    # 3 present and 1 late by 1 of 60 minutes: 99.58%, shown as 99.6.
+    almost = [record(ML, ASHA, "present")] * 3 + [record(ML, ASHA, "late", 1)]
+
+    table = defaulters(ML, almost, threshold=99.6)
+
+    assert [row[-1] for row in table.rows] == [99.6]
