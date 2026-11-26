@@ -7,6 +7,13 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-27
+
+### Changed
+
+- `setup.bat` installs everything FaceID needs on a new Windows laptop: the Visual C++ runtime, Python 3.10.11 and MySQL 8.0.46, each only when missing. Downloads are checked against known SHA-256 hashes (Python, MySQL) or Microsoft's signature (Visual C++).
+- The MySQL that setup installs lives in `%LOCALAPPDATA%\FaceID`, listens on 127.0.0.1:3307 only and gets a random root password, so nobody types one. `run.bat`, `backup.bat` and `restore.bat` start it when needed. An existing MySQL80 service is still used when present.
+
 ## [0.4.0] - 2026-11-24
 
 ### Added
