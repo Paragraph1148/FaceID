@@ -2,22 +2,23 @@
 
 Run this on the demo laptop (Windows 11) for every release. It takes about 20 minutes the first time and 5 minutes after that. Write the results in the table at the end and send them back.
 
-## One-time installs (first release only)
+## What setup installs
 
-1. **Python 3.10.11**: https://www.python.org/downloads/release/python-31011/ → "Windows installer (64-bit)".
-   In the installer, tick **"Add python.exe to PATH"** and keep **"py launcher"** ticked.
-2. **MySQL 8.0.46**: https://dev.mysql.com/downloads/installer/ → choose version 8.0.46 → the larger "mysql-installer-community" file.
-   - Setup type: **Server only**.
-   - Choose a root password and write it down. Setup asks for it.
-   - Keep "Configure MySQL Server as a Windows Service" ticked, with the service name **MySQL80**.
+Nothing needs installing by hand. `setup.bat` installs whatever is missing:
+
+- the Microsoft Visual C++ runtime. Windows asks for permission once: click **Yes**.
+- Python 3.10.11, for this Windows user only.
+- MySQL 8.0.46, about 250 MB, into `%LOCALAPPDATA%\FaceID`, with a password it chooses and remembers. It runs only on this laptop, on port 3307, and `run.bat`, `backup.bat` and `restore.bat` start it when needed.
+
+If MySQL is already installed as the **MySQL80** service, setup uses that instead and asks for its root password.
 
 ## Each release
 
-1. On https://github.com/Paragraph1148/FaceID/releases, download the release's **Source code (zip)** and unzip it to `C:\FaceID-<version>`.
+1. Download `https://github.com/Paragraph1148/FaceID/archive/refs/tags/v<version>.zip` (for example `.../v0.4.1.zip`) and unzip it to `C:\FaceID-<version>`.
    - Upgrading: copy the `instance` folder from the previous version's folder into the new one first. It holds the settings.
 2. Double-click **`setup.bat`**.
    - Windows may warn "Windows protected your PC" → **More info → Run anyway**.
-   - It installs packages, which takes a few minutes the first time, then asks for the MySQL root password.
+   - The first time, it downloads and installs Python, the packages and MySQL, which takes 10 to 15 minutes. Keep the laptop online.
    - First release only: answer `y` to create the Admin account.
    - It must end with green text: **"Setup finished"**.
 3. Double-click **`run.bat`**. A browser opens at http://127.0.0.1:5000.
@@ -72,8 +73,8 @@ Run this on the demo laptop (Windows 11) for every release. It takes about 20 mi
 
 ## If something fails
 
-- **"Python 3.10 not found"**: install Python 3.10.11 as above, then run `setup.bat` again.
-- **"Could not reach MySQL"**: open *Services*, find **MySQL80**, and make sure it is *Running*. Then run `setup.bat` again and retype the password.
-- **Error mentioning a DLL during "Installing packages" or "dlib does not import"**: install the Microsoft Visual C++ Redistributable (x64) from https://aka.ms/vs/17/release/vc_redist.x64.exe, then run `setup.bat` again.
+- **"Could not download"**: check the internet connection and run `setup.bat` again. Finished downloads are kept.
+- **"Could not reach MySQL"** with MySQL80 installed: open *Services*, find **MySQL80**, and make sure it is *Running*. Then run `setup.bat` again and retype the password.
+- **"The database did not start"**: restart Windows and run `run.bat` again. If it still fails, send a screenshot of the newest `.err` file in `%LOCALAPPDATA%\FaceID\mysql-data`.
 - **The camera picture says "could not be opened"**: close other apps using the camera (Zoom, Teams, the Camera app) and reload the page.
 - **Anything else**: screenshot the whole window and send it.

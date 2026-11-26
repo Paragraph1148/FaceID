@@ -20,7 +20,7 @@ No face images are stored. Each enrolment photo is turned into a 128-number Face
 
 ## Running
 
-**Windows (the demo laptop):** follow [`docs/windows-checklist.md`](docs/windows-checklist.md). In short, `setup.bat` once, then `run.bat`.
+**Windows (the demo laptop):** follow [`docs/windows-checklist.md`](docs/windows-checklist.md). In short, `setup.bat` once (it installs Python and MySQL if they are missing), then `run.bat`.
 
 **Linux (development):**
 
